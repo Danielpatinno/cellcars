@@ -4,7 +4,8 @@ import { useState, useEffect } from "react";
 import { useRouter, useParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { ArrowLeft, Edit, Save, X, Trash2, User, Phone, Mail, MapPin, Calendar, CreditCard, ShoppingBag } from "lucide-react";
+import { ArrowLeft, Edit, Save, X, Trash2, User, Phone, Mail, MapPin, Calendar, CreditCard, ShoppingBag, MessageCircle } from "lucide-react";
+import { toast } from "sonner";
 import {
   getClientById,
   updateClient,
@@ -39,6 +40,67 @@ export default function ClientDetailsPage() {
     address: "",
     birth_date: "",
   });
+  const [cinDisplay, setCinDisplay] = useState("");
+  const [phoneDisplay, setPhoneDisplay] = useState("");
+
+  // Função para formatar C.I.N (agrupa de 3 em 3 com pontos)
+  const formatCIN = (value: string) => {
+    // Remove tudo exceto números
+    const numbers = value.replace(/\D/g, "");
+    // Agrupa de 3 em 3 da direita para esquerda
+    if (numbers.length <= 3) return numbers;
+    const formatted = numbers.replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+    return formatted;
+  };
+
+  // Função para remover formatação (salva apenas números no banco)
+  const unformatCIN = (value: string) => {
+    return value.replace(/\D/g, "");
+  };
+
+  // Função para formatar telefone paraguaio (0986 381-491)
+  const formatPhone = (value: string) => {
+    // Remove tudo exceto números
+    const numbers = value.replace(/\D/g, "");
+    // Limita a 10 dígitos
+    const limited = numbers.slice(0, 10);
+    
+    if (limited.length <= 4) return limited;
+    if (limited.length <= 7) {
+      return `${limited.slice(0, 4)} ${limited.slice(4)}`;
+    }
+    return `${limited.slice(0, 4)} ${limited.slice(4, 7)}-${limited.slice(7)}`;
+  };
+
+  // Função para remover formatação do telefone
+  const unformatPhone = (value: string) => {
+    return value.replace(/\D/g, "");
+  };
+
+  // Função para abrir WhatsApp
+  const openWhatsApp = (phone: string) => {
+    try {
+      // Remove formatação e espaços
+      const cleanPhone = phone.replace(/\D/g, "");
+      if (!cleanPhone) {
+        toast.error("Número de telefone inválido");
+        return;
+      }
+      // Adiciona código do Paraguai se não tiver
+      const phoneWithCode = cleanPhone.startsWith("595") ? cleanPhone : `595${cleanPhone}`;
+      // Mensagem padrão
+      const message = encodeURIComponent("Hola");
+      // Abre WhatsApp em nova aba
+      const whatsappUrl = `https://wa.me/${phoneWithCode}?text=${message}`;
+      const newWindow = window.open(whatsappUrl, "_blank", "noopener,noreferrer");
+      if (!newWindow) {
+        toast.error("Por favor, permita pop-ups para abrir o WhatsApp");
+      }
+    } catch (error) {
+      console.error("Error opening WhatsApp:", error);
+      toast.error("Error al abrir WhatsApp");
+    }
+  };
 
   useEffect(() => {
     loadClient();
@@ -59,6 +121,9 @@ export default function ClientDetailsPage() {
           address: data.address || "",
           birth_date: data.birth_date ? data.birth_date.split("T")[0] : "",
         });
+        // Formatar C.I.N e telefone para exibição
+        setCinDisplay(formatCIN(data.cin));
+        setPhoneDisplay(formatPhone(data.phone));
       }
     } catch (error) {
       console.error("Error loading client:", error);
@@ -89,11 +154,13 @@ export default function ClientDetailsPage() {
     return age;
   };
 
+  // Função para formatar moeda (igual ao CurrencyInput)
   const formatCurrency = (value: number) => {
-    return new Intl.NumberFormat("es-ES", {
-      style: "currency",
-      currency: "USD",
-    }).format(value / 100);
+    if (value === 0 || value === null || value === undefined) return "0,00";
+    const formatted = (value / 100).toFixed(2).replace(".", ",");
+    const parts = formatted.split(",");
+    parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+    return parts.join(",");
   };
 
   const handleSave = async () => {
@@ -109,14 +176,15 @@ export default function ClientDetailsPage() {
       });
 
       if (result.success) {
+        toast.success("Cliente actualizado exitosamente");
         setEditing(false);
         loadClient();
       } else {
-        alert(result.message);
+        toast.error(result.message || "Error al actualizar cliente");
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error updating client:", error);
-      alert("Error al actualizar cliente");
+      toast.error("Error al actualizar cliente: " + (error.message || "Error desconocido"));
     } finally {
       setLoading(false);
     }
@@ -127,13 +195,14 @@ export default function ClientDetailsPage() {
     try {
       const result = await deleteClient(id);
       if (result.success) {
+        toast.success("Cliente eliminado exitosamente");
         router.push("/clientes");
       } else {
-        alert(result.message);
+        toast.error(result.message || "Error al eliminar cliente");
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error deleting client:", error);
-      alert("Error al eliminar cliente");
+      toast.error("Error al eliminar cliente: " + (error.message || "Error desconocido"));
     } finally {
       setLoading(false);
     }
@@ -176,6 +245,14 @@ export default function ClientDetailsPage() {
         </div>
         {!editing ? (
           <div className="flex gap-2">
+            <Button
+              onClick={() => openWhatsApp(client.phone)}
+              variant="outline"
+              className="bg-green-50 border-green-600 text-green-600 hover:bg-green-100"
+            >
+              <MessageCircle className="mr-2 h-4 w-4" />
+              Enviar Mensaje
+            </Button>
             <Button onClick={() => setEditing(true)} variant="outline" className="bg-white border-black text-black hover:bg-zinc-50">
               <Edit className="mr-2 h-4 w-4" />
               Editar
@@ -190,7 +267,11 @@ export default function ClientDetailsPage() {
           </div>
         ) : (
           <div className="flex gap-2">
-            <Button onClick={handleSave} disabled={loading} variant="outline" className="bg-white border-black text-black hover:bg-zinc-50">
+            <Button 
+              onClick={handleSave} 
+              disabled={loading} 
+              className="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 text-base shadow-md"
+            >
               <Save className="mr-2 h-4 w-4" />
               Guardar
             </Button>
@@ -213,7 +294,7 @@ export default function ClientDetailsPage() {
           <h2 className="text-xl font-semibold mb-4 text-black">Editar Información</h2>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <label className="mb-1 block text-sm font-medium text-black">
+              <label className="mb-1 block text-sm font-medium text-zinc-500">
                 Nombre Completo *
               </label>
               <Input
@@ -225,31 +306,39 @@ export default function ClientDetailsPage() {
               />
             </div>
             <div>
-              <label className="mb-1 block text-sm font-medium text-black">
+              <label className="mb-1 block text-sm font-medium text-zinc-500">
                 C.I.N *
               </label>
               <Input
                 required
-                value={formData.cin}
-                onChange={(e) =>
-                  setFormData({ ...formData, cin: e.target.value })
-                }
+                value={cinDisplay}
+                onChange={(e) => {
+                  const formatted = formatCIN(e.target.value);
+                  setCinDisplay(formatted);
+                  setFormData({ ...formData, cin: unformatCIN(formatted) });
+                }}
+                placeholder="0.000.000"
+                maxLength={12}
               />
             </div>
             <div>
-              <label className="mb-1 block text-sm font-medium text-black">
+              <label className="mb-1 block text-sm font-medium text-zinc-500">
                 Teléfono *
               </label>
               <Input
                 required
-                value={formData.phone}
-                onChange={(e) =>
-                  setFormData({ ...formData, phone: e.target.value })
-                }
+                value={phoneDisplay}
+                onChange={(e) => {
+                  const formatted = formatPhone(e.target.value);
+                  setPhoneDisplay(formatted);
+                  setFormData({ ...formData, phone: unformatPhone(formatted) });
+                }}
+                placeholder="0986 381-491"
+                maxLength={14}
               />
             </div>
             <div>
-              <label className="mb-1 block text-sm font-medium text-black">
+              <label className="mb-1 block text-sm font-medium text-zinc-500">
                 Correo Electrónico
               </label>
               <Input
@@ -261,7 +350,7 @@ export default function ClientDetailsPage() {
               />
             </div>
             <div>
-              <label className="mb-1 block text-sm font-medium text-black">
+              <label className="mb-1 block text-sm font-medium text-zinc-500">
                 Dirección
               </label>
               <Input
@@ -272,7 +361,7 @@ export default function ClientDetailsPage() {
               />
             </div>
             <div>
-              <label className="mb-1 block text-sm font-medium text-black">
+              <label className="mb-1 block text-sm font-medium text-zinc-500">
                 Fecha de Nacimiento
               </label>
               <Input
@@ -297,22 +386,22 @@ export default function ClientDetailsPage() {
               </h2>
               <div className="space-y-4">
                 <div>
-                  <label className="text-sm font-medium text-black flex items-center gap-2 mb-1">
+                  <label className="text-sm font-medium text-zinc-500 flex items-center gap-2 mb-1">
                     <User className="h-4 w-4" />
                     Nombre Completo
                   </label>
                   <p className="text-lg text-zinc-900 font-medium">{client.name}</p>
                 </div>
                 <div>
-                  <label className="text-sm font-medium text-black flex items-center gap-2 mb-1">
+                  <label className="text-sm font-medium text-zinc-500 flex items-center gap-2 mb-1">
                     <CreditCard className="h-4 w-4" />
                     C.I.N
                   </label>
-                  <p className="text-lg text-zinc-900">{client.cin}</p>
+                  <p className="text-lg text-zinc-900">{formatCIN(client.cin)}</p>
                 </div>
                 {age !== null && (
                   <div>
-                    <label className="text-sm font-medium text-black flex items-center gap-2 mb-1">
+                    <label className="text-sm font-medium text-zinc-500 flex items-center gap-2 mb-1">
                       <Calendar className="h-4 w-4" />
                       Edad
                     </label>
@@ -330,14 +419,14 @@ export default function ClientDetailsPage() {
               </h2>
               <div className="space-y-4">
                 <div>
-                  <label className="text-sm font-medium text-black flex items-center gap-2 mb-1">
+                  <label className="text-sm font-medium text-zinc-500 flex items-center gap-2 mb-1">
                     <Phone className="h-4 w-4" />
                     Teléfono
                   </label>
-                  <p className="text-lg text-zinc-900">{client.phone}</p>
+                  <p className="text-lg text-zinc-900">{formatPhone(client.phone)}</p>
                 </div>
                 <div>
-                  <label className="text-sm font-medium text-black flex items-center gap-2 mb-1">
+                  <label className="text-sm font-medium text-zinc-500 flex items-center gap-2 mb-1">
                     <Mail className="h-4 w-4" />
                     Correo Electrónico
                   </label>
@@ -347,7 +436,7 @@ export default function ClientDetailsPage() {
                 </div>
                 {client.address && (
                   <div>
-                    <label className="text-sm font-medium text-black flex items-center gap-2 mb-1">
+                    <label className="text-sm font-medium text-zinc-500 flex items-center gap-2 mb-1">
                       <MapPin className="h-4 w-4" />
                       Dirección
                     </label>
@@ -367,7 +456,7 @@ export default function ClientDetailsPage() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               {client.birth_date && (
                 <div>
-                  <label className="text-sm font-medium text-black mb-1 block">
+                  <label className="text-sm font-medium text-zinc-500 mb-1 block">
                     Fecha de Nacimiento
                   </label>
                   <p className="text-lg text-zinc-900">
@@ -376,7 +465,7 @@ export default function ClientDetailsPage() {
                 </div>
               )}
               <div>
-                <label className="text-sm font-medium text-black mb-1 block">
+                <label className="text-sm font-medium text-zinc-500 mb-1 block">
                   Fecha de Registro
                 </label>
                 <p className="text-lg text-zinc-900">
@@ -483,10 +572,10 @@ export default function ClientDetailsPage() {
 
       {/* Dialog de confirmação de exclusão */}
       <Dialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
-        <DialogContent>
+        <DialogContent className="bg-white">
           <DialogHeader>
-            <DialogTitle>Confirmar Eliminación</DialogTitle>
-            <DialogDescription>
+            <DialogTitle className="text-black">Confirmar Eliminación</DialogTitle>
+            <DialogDescription className="text-black">
               ¿Está seguro de que desea eliminar al cliente{" "}
               <strong>{client.name}</strong>? Esta acción no se puede deshacer.
             </DialogDescription>
@@ -498,7 +587,11 @@ export default function ClientDetailsPage() {
             >
               Cancelar
             </Button>
-            <Button variant="destructive" onClick={handleDelete}>
+            <Button 
+              variant="destructive" 
+              onClick={handleDelete}
+              className="bg-red-600 hover:bg-red-700 text-white"
+            >
               Eliminar
             </Button>
           </DialogFooter>

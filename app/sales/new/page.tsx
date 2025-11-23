@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ArrowLeft, Plus, X, Loader2 } from "lucide-react";
+import { toast } from "sonner";
 import {
   createSale,
   Sale,
@@ -18,6 +19,25 @@ export default function NewSalePage() {
   const [loading, setLoading] = useState(false);
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);
   const [clients, setClients] = useState<Client[]>([]);
+  
+  // Função para formatar moeda (igual ao CurrencyInput)
+  const formatCurrency = (value: number) => {
+    if (value === 0 || value === null || value === undefined) return "0,00";
+    const formatted = (value / 100).toFixed(2).replace(".", ",");
+    const parts = formatted.split(",");
+    parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+    return parts.join(",");
+  };
+
+  // Função para formatar C.I.N (agrupa de 3 em 3 com pontos)
+  const formatCIN = (value: string) => {
+    if (!value) return "";
+    const numbers = value.replace(/\D/g, "");
+    if (numbers.length <= 3) return numbers;
+    const formatted = numbers.replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+    return formatted;
+  };
+  
   const [formData, setFormData] = useState({
     vehicle_id: "",
     client_id: "",
@@ -121,7 +141,7 @@ export default function NewSalePage() {
     try {
       // Validar que se seleccionó vehículo y cliente
       if (!formData.vehicle_id || !formData.client_id) {
-        alert("Por favor seleccione un vehículo y un cliente");
+        toast.error("Por favor seleccione un vehículo y un cliente");
         setLoading(false);
         return;
       }
@@ -131,7 +151,7 @@ export default function NewSalePage() {
         formData.payment_method === "A cuota" &&
         installments.length === 0
       ) {
-        alert("Debe agregar al menos un recibo/cuota para ventas a cuota");
+        toast.error("Debe agregar al menos un recibo/cuota para ventas a cuota");
         setLoading(false);
         return;
       }
@@ -139,7 +159,7 @@ export default function NewSalePage() {
       // Validar recibos
       for (const inst of installments) {
         if (!inst.receipt_number || inst.amount === 0 || !inst.due_date) {
-          alert("Por favor complete todos los campos obligatorios de los recibos");
+          toast.error("Por favor complete todos los campos obligatorios de los recibos");
           setLoading(false);
           return;
         }
@@ -156,13 +176,14 @@ export default function NewSalePage() {
       });
 
       if (result.success) {
+        toast.success("Venta creada exitosamente");
         router.push(`/sales/${result.sale.id}`);
       } else {
-        alert(result.message);
+        toast.error(result.message || "Error al crear venta");
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error creating sale:", error);
-      alert("Error al crear venta");
+      toast.error("Error al crear venta: " + (error.message || "Error desconocido"));
     } finally {
       setLoading(false);
     }
@@ -183,7 +204,7 @@ export default function NewSalePage() {
           <h2 className="text-xl font-semibold mb-4 text-black">Información de la Venta</h2>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <label className="mb-1 block text-sm font-medium text-black">
+              <label className="mb-1 block text-sm font-medium text-zinc-500">
                 Vehículo *
               </label>
               <select
@@ -197,13 +218,13 @@ export default function NewSalePage() {
                 <option value="">Seleccione un vehículo</option>
                 {vehicles.map((vehicle) => (
                   <option key={vehicle.id} value={vehicle.id}>
-                    {vehicle.brand} {vehicle.model} {vehicle.year} - {vehicle.plate} - ${(vehicle.price / 100).toFixed(2).replace(".", ",")}
+                    {vehicle.brand} {vehicle.model} {vehicle.year} - {vehicle.plate} - ${formatCurrency(vehicle.price)}
                   </option>
                 ))}
               </select>
             </div>
             <div>
-              <label className="mb-1 block text-sm font-medium text-black">
+              <label className="mb-1 block text-sm font-medium text-zinc-500">
                 Cliente *
               </label>
               <select
@@ -217,13 +238,13 @@ export default function NewSalePage() {
                 <option value="">Seleccione un cliente</option>
                 {clients.map((client) => (
                   <option key={client.id} value={client.id}>
-                    {client.name} - {client.cin}
+                    {client.name} - {formatCIN(client.cin)}
                   </option>
                 ))}
               </select>
             </div>
             <div>
-              <label className="mb-1 block text-sm font-medium text-black">
+              <label className="mb-1 block text-sm font-medium text-zinc-500">
                 Fecha de Venta *
               </label>
               <Input
@@ -237,7 +258,7 @@ export default function NewSalePage() {
               />
             </div>
             <div>
-              <label className="mb-1 block text-sm font-medium text-black">
+              <label className="mb-1 block text-sm font-medium text-zinc-500">
                 Método de Pago *
               </label>
               <select
@@ -253,7 +274,7 @@ export default function NewSalePage() {
               </select>
             </div>
             <div>
-              <label className="mb-1 block text-sm font-medium text-black">
+              <label className="mb-1 block text-sm font-medium text-zinc-500">
                 Monto Total *
               </label>
               <CurrencyInput
@@ -265,7 +286,7 @@ export default function NewSalePage() {
             </div>
             {selectedVehicle && (
               <div>
-                <label className="mb-1 block text-sm font-medium text-black">
+                <label className="mb-1 block text-sm font-medium text-zinc-500">
                   Margen de Lucro
                 </label>
                 <div className="px-3 py-2 bg-blue-50 border border-blue-200 rounded-lg">
@@ -276,7 +297,7 @@ export default function NewSalePage() {
               </div>
             )}
             <div className="md:col-span-2">
-              <label className="mb-1 block text-sm font-medium text-black">
+              <label className="mb-1 block text-sm font-medium text-zinc-500">
                 Notas
               </label>
               <textarea
@@ -326,7 +347,7 @@ export default function NewSalePage() {
                     </div>
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                       <div>
-                        <label className="mb-1 block text-sm font-medium text-black">
+                        <label className="mb-1 block text-sm font-medium text-zinc-500">
                           Número de Recibo *
                         </label>
                         <Input
@@ -344,7 +365,7 @@ export default function NewSalePage() {
                         />
                       </div>
                       <div>
-                        <label className="mb-1 block text-sm font-medium text-black">
+                        <label className="mb-1 block text-sm font-medium text-zinc-500">
                           Monto *
                         </label>
                         <CurrencyInput
@@ -355,7 +376,7 @@ export default function NewSalePage() {
                         />
                       </div>
                       <div>
-                        <label className="mb-1 block text-sm font-medium text-black">
+                        <label className="mb-1 block text-sm font-medium text-zinc-500">
                           Fecha de Vencimiento *
                         </label>
                         <Input
@@ -377,7 +398,11 @@ export default function NewSalePage() {
         )}
 
         <div className="flex gap-2">
-          <Button type="submit" disabled={loading} variant="outline" className="bg-white border-black text-black hover:bg-zinc-50">
+          <Button 
+            type="submit" 
+            disabled={loading} 
+            className="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 text-base shadow-md"
+          >
             {loading ? (
               <>
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />

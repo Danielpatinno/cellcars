@@ -5,6 +5,7 @@ import { useRouter, useParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ArrowLeft, Plus, X, Check, Calendar } from "lucide-react";
+import { toast } from "sonner";
 import {
   getSaleById,
   addInstallment,
@@ -62,7 +63,7 @@ export default function SaleDetailsPage() {
 
   const handleAddInstallment = async () => {
     if (!newInstallment.receipt_number || newInstallment.amount === 0 || !newInstallment.due_date) {
-      alert("Por favor complete todos los campos");
+      toast.error("Por favor complete todos los campos");
       return;
     }
 
@@ -70,6 +71,7 @@ export default function SaleDetailsPage() {
     try {
       const result = await addInstallment(id, newInstallment);
       if (result.success) {
+        toast.success("Recibo agregado exitosamente");
         setShowAddInstallment(false);
         setNewInstallment({
           receipt_number: "",
@@ -78,11 +80,11 @@ export default function SaleDetailsPage() {
         });
         loadSale();
       } else {
-        alert(result.message);
+        toast.error(result.message || "Error al agregar recibo");
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error adding installment:", error);
-      alert("Error al agregar recibo");
+      toast.error("Error al agregar recibo: " + (error.message || "Error desconocido"));
     } finally {
       setLoading(false);
     }
@@ -90,7 +92,7 @@ export default function SaleDetailsPage() {
 
   const handleMarkAsPaid = async () => {
     if (!selectedInstallmentId || !paymentDate) {
-      alert("Por favor seleccione una fecha de pago");
+      toast.error("Por favor seleccione una fecha de pago");
       return;
     }
 
@@ -98,27 +100,30 @@ export default function SaleDetailsPage() {
     try {
       const result = await markInstallmentAsPaid(selectedInstallmentId, paymentDate, paymentNotes || null);
       if (result.success) {
+        toast.success("Recibo marcado como pagado exitosamente");
         setShowMarkAsPaid(false);
         setSelectedInstallmentId(null);
         setPaymentDate("");
         setPaymentNotes("");
         loadSale();
       } else {
-        alert(result.message);
+        toast.error(result.message || "Error al marcar como pagado");
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error marking as paid:", error);
-      alert("Error al marcar como pagado");
+      toast.error("Error al marcar como pagado: " + (error.message || "Error desconocido"));
     } finally {
       setLoading(false);
     }
   };
 
+  // Função para formatar moeda (igual ao CurrencyInput)
   const formatCurrency = (value: number) => {
-    return new Intl.NumberFormat("es-ES", {
-      style: "currency",
-      currency: "USD",
-    }).format(value / 100);
+    if (value === 0 || value === null || value === undefined) return "0,00";
+    const formatted = (value / 100).toFixed(2).replace(".", ",");
+    const parts = formatted.split(",");
+    parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+    return parts.join(",");
   };
 
   const isOverdue = (dueDate: string) => {
@@ -166,7 +171,7 @@ export default function SaleDetailsPage() {
           <h2 className="text-xl font-semibold mb-4 text-black">Información de la Venta</h2>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div>
-              <label className="text-sm font-medium text-black">Vehículo</label>
+              <label className="text-sm font-medium text-zinc-500">Vehículo</label>
               <p className="mt-1 text-lg text-zinc-900">
                 {sale.vehicle
                   ? `${sale.vehicle.brand} ${sale.vehicle.model} ${sale.vehicle.year} - ${sale.vehicle.plate}`
@@ -174,37 +179,37 @@ export default function SaleDetailsPage() {
               </p>
             </div>
             <div>
-              <label className="text-sm font-medium text-black">Cliente</label>
+              <label className="text-sm font-medium text-zinc-500">Cliente</label>
               <p className="mt-1 text-lg text-zinc-900">
                 {sale.client?.name || "N/A"}
               </p>
             </div>
             <div>
-              <label className="text-sm font-medium text-black">Fecha de Venta</label>
+              <label className="text-sm font-medium text-zinc-500">Fecha de Venta</label>
               <p className="mt-1 text-lg text-zinc-900">
                 <FormattedDate date={sale.sale_date} format="date" />
               </p>
             </div>
             <div>
-              <label className="text-sm font-medium text-black">Método de Pago</label>
+              <label className="text-sm font-medium text-zinc-500">Método de Pago</label>
               <p className="mt-1 text-lg text-zinc-900">{sale.payment_method}</p>
             </div>
             <div>
-              <label className="text-sm font-medium text-black">Monto Total</label>
+              <label className="text-sm font-medium text-zinc-500">Monto Total</label>
               <p className="mt-1 text-lg font-bold text-zinc-900">
                 {formatCurrency(sale.total_amount)}
               </p>
             </div>
             {sale.vehicle && (
               <div>
-                <label className="text-sm font-medium text-black">Margen de Lucro</label>
+                <label className="text-sm font-medium text-zinc-500">Margen de Lucro</label>
                 <p className="mt-1 text-lg font-semibold text-blue-600">
                   {calculateProfitMargin()}%
                 </p>
               </div>
             )}
             <div>
-              <label className="text-sm font-medium text-black">Estado</label>
+              <label className="text-sm font-medium text-zinc-500">Estado</label>
               <p className="mt-1">
                 <span
                   className={`px-2 py-1 text-sm font-medium rounded ${
@@ -221,7 +226,7 @@ export default function SaleDetailsPage() {
             </div>
             {sale.notes && (
               <div className="md:col-span-2">
-                <label className="text-sm font-medium text-black">Notas</label>
+                <label className="text-sm font-medium text-zinc-500">Notas</label>
                 <p className="mt-1 text-zinc-900">{sale.notes}</p>
               </div>
             )}
@@ -352,7 +357,7 @@ export default function SaleDetailsPage() {
           </DialogHeader>
           <div className="space-y-4 py-4">
             <div>
-              <label className="mb-1 block text-sm font-medium text-black">
+              <label className="mb-1 block text-sm font-medium text-zinc-500">
                 Número de Recibo *
               </label>
               <Input
@@ -368,7 +373,7 @@ export default function SaleDetailsPage() {
               />
             </div>
             <div>
-              <label className="mb-1 block text-sm font-medium text-black">
+              <label className="mb-1 block text-sm font-medium text-zinc-500">
                 Monto *
               </label>
               <CurrencyInput
@@ -379,7 +384,7 @@ export default function SaleDetailsPage() {
               />
             </div>
             <div>
-              <label className="mb-1 block text-sm font-medium text-black">
+              <label className="mb-1 block text-sm font-medium text-zinc-500">
                 Fecha de Vencimiento *
               </label>
               <Input
@@ -412,7 +417,7 @@ export default function SaleDetailsPage() {
           </DialogHeader>
           <div className="space-y-4 py-4">
             <div>
-              <label className="mb-1 block text-sm font-medium text-black">
+              <label className="mb-1 block text-sm font-medium text-zinc-500">
                 Fecha de Pago *
               </label>
               <Input
@@ -423,7 +428,7 @@ export default function SaleDetailsPage() {
               />
             </div>
             <div>
-              <label className="mb-1 block text-sm font-medium text-black">
+              <label className="mb-1 block text-sm font-medium text-zinc-500">
                 Notas
               </label>
               <textarea

@@ -4,6 +4,8 @@ import { useState, useEffect, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { AlertTriangle, Search, Check, Calendar } from "lucide-react";
+import { toast } from "sonner";
+import { TableLoading } from "@/components/ui/table-loading";
 import {
   getPendingInstallments,
   markInstallmentAsPaid,
@@ -60,7 +62,7 @@ export default function PendenciasPage() {
 
   const handleMarkAsPaid = async () => {
     if (!selectedInstallmentId || !paymentDate) {
-      alert("Por favor seleccione una fecha de pago");
+      toast.error("Por favor seleccione una fecha de pago");
       return;
     }
 
@@ -68,16 +70,17 @@ export default function PendenciasPage() {
     try {
       const result = await markInstallmentAsPaid(selectedInstallmentId, paymentDate, paymentNotes || null);
       if (result.success) {
+        toast.success("Recibo marcado como pagado exitosamente");
         setShowMarkAsPaidDialog(false);
         setSelectedInstallmentId(null);
         setPaymentNotes("");
         loadInstallments();
       } else {
-        alert(result.message);
+        toast.error(result.message || "Error al marcar como pagado");
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error marking as paid:", error);
-      alert("Error al marcar como pagado");
+      toast.error("Error al marcar como pagado: " + (error.message || "Error desconocido"));
     } finally {
       setLoading(false);
     }
@@ -115,11 +118,13 @@ export default function PendenciasPage() {
   const totalOverdue = installments.filter((inst) => isOverdue(inst.due_date) && inst.status !== "pagado").length;
   const totalAmount = filteredInstallments.reduce((sum, inst) => sum + inst.amount, 0);
 
+  // Função para formatar moeda (igual ao CurrencyInput)
   const formatCurrency = (value: number) => {
-    return new Intl.NumberFormat("es-ES", {
-      style: "currency",
-      currency: "USD",
-    }).format(value / 100);
+    if (value === 0 || value === null || value === undefined) return "0,00";
+    const formatted = (value / 100).toFixed(2).replace(".", ",");
+    const parts = formatted.split(",");
+    parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+    return parts.join(",");
   };
 
   return (
@@ -205,8 +210,39 @@ export default function PendenciasPage() {
 
       {/* Lista de recibos */}
       {loading ? (
-        <div className="text-center py-12">
-          <p className="text-zinc-600">Cargando recibos...</p>
+        <div className="bg-white rounded-lg border border-zinc-200 overflow-hidden">
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead className="bg-zinc-50 border-b border-zinc-200">
+                <tr>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-black uppercase tracking-wider">
+                    Número de Recibo
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-black uppercase tracking-wider">
+                    Cliente
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-black uppercase tracking-wider">
+                    Vehículo
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-black uppercase tracking-wider">
+                    Monto
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-black uppercase tracking-wider">
+                    Vencimiento
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-black uppercase tracking-wider">
+                    Estado
+                  </th>
+                  <th className="px-6 py-3 text-right text-xs font-medium text-black uppercase tracking-wider">
+                    Acciones
+                  </th>
+                </tr>
+              </thead>
+              <tbody className="bg-white divide-y divide-zinc-200">
+                <TableLoading colSpan={7} message="Cargando recibos..." />
+              </tbody>
+            </table>
+          </div>
         </div>
       ) : filteredInstallments.length === 0 ? (
         <div className="text-center py-12 bg-white rounded-lg border border-zinc-200">

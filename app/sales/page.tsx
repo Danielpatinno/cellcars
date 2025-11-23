@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { DollarSign, Plus, Search, Calendar, Eye } from "lucide-react";
 import { getSales, Sale } from "./actions";
 import FormattedDate from "@/components/FormattedDate";
+import { TableLoading } from "@/components/ui/table-loading";
 
 export default function SalesPage() {
   const router = useRouter();
@@ -43,11 +44,13 @@ export default function SalesPage() {
     );
   }, [sales, searchTerm]);
 
+  // Função para formatar moeda (igual ao CurrencyInput)
   const formatCurrency = (value: number) => {
-    return new Intl.NumberFormat("es-ES", {
-      style: "currency",
-      currency: "USD",
-    }).format(value);
+    if (value === 0 || value === null || value === undefined) return "0,00";
+    const formatted = (value / 100).toFixed(2).replace(".", ",");
+    const parts = formatted.split(",");
+    parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+    return parts.join(",");
   };
 
   return (
@@ -79,8 +82,39 @@ export default function SalesPage() {
 
       {/* Lista de vendas */}
       {loading ? (
-        <div className="text-center py-12">
-          <p className="text-zinc-600">Cargando ventas...</p>
+        <div className="bg-white rounded-lg border border-zinc-200 overflow-hidden">
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead className="bg-zinc-50 border-b border-zinc-200">
+                <tr>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-black uppercase tracking-wider">
+                    Fecha
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-black uppercase tracking-wider">
+                    Cliente
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-black uppercase tracking-wider">
+                    Vehículo
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-black uppercase tracking-wider">
+                    Monto Total
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-black uppercase tracking-wider">
+                    Método de Pago
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-black uppercase tracking-wider">
+                    Estado
+                  </th>
+                  <th className="px-6 py-3 text-right text-xs font-medium text-zinc-700 uppercase tracking-wider">
+                    Acciones
+                  </th>
+                </tr>
+              </thead>
+              <tbody className="bg-white divide-y divide-zinc-200">
+                <TableLoading colSpan={7} message="Cargando ventas..." />
+              </tbody>
+            </table>
+          </div>
         </div>
       ) : filteredSales.length === 0 ? (
         <div className="text-center py-12 bg-white rounded-lg border border-zinc-200">

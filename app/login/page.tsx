@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { createClient } from "@/lib/supabase/client";
 import { Loader2, User, Lock } from "lucide-react";
+import Image from "next/image";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -51,8 +52,18 @@ export default function LoginPage() {
       <div className="w-full max-w-md">
         <div className="bg-white rounded-xl shadow-lg p-8">
           <div className="text-center mb-8">
-            <h1 className="text-3xl font-bold text-zinc-900 mb-2">CelleCars</h1>
-            <p className="text-zinc-600">Inicie sesión para continuar</p>
+            <div className="flex items-center justify-center gap-3">
+              <div className="flex h-12 w-12 items-center justify-center rounded-lg shrink-0 overflow-hidden">
+                <Image
+                  src="/assets/imagens/loco_cell.png"
+                  alt="CelleCars Logo"
+                  width={48}
+                  height={48}
+                  className="object-contain"
+                />
+              </div>
+              <h1 className="text-3xl font-bold text-zinc-900">CelleCars</h1>
+            </div>
           </div>
 
           <form onSubmit={handleLogin} className="space-y-4">
@@ -96,7 +107,11 @@ export default function LoginPage() {
               </div>
             </div>
 
-            <Button type="submit" className="w-full" disabled={loading}>
+            <Button 
+              type="submit" 
+              className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 text-base shadow-md" 
+              disabled={loading}
+            >
               {loading ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />

@@ -40,6 +40,7 @@ export default function Sidebar() {
   const { isCollapsed, setIsCollapsed } = useSidebar();
   const { user, signOut } = useAuth();
   const [showChangePassword, setShowChangePassword] = useState(false);
+  const [showLogoutDialog, setShowLogoutDialog] = useState(false);
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [changingPassword, setChangingPassword] = useState(false);
@@ -126,7 +127,11 @@ export default function Sidebar() {
           {/* Navigation */}
           <nav className="flex-1 space-y-1 px-4 py-6">
             {menuItems.map((item) => {
-              const isActive = pathname === item.href;
+              // Para "Inicio", só ativo quando for exatamente "/"
+              // Para outros, ativo quando o pathname começa com o href
+              const isActive = item.href === "/" 
+                ? pathname === "/" 
+                : pathname.startsWith(item.href);
               return (
                 <Link
                   key={item.href}
@@ -182,8 +187,9 @@ export default function Sidebar() {
             )}
 
             {/* Botão Cambiar Contraseña */}
-            <button
+            <Button
               onClick={() => setShowChangePassword(true)}
+              variant="ghost"
               className={`w-full flex items-center gap-3 px-4 py-2 text-zinc-700 hover:bg-zinc-100 rounded-lg transition-colors ${
                 isCollapsed ? "justify-center" : ""
               }`}
@@ -191,11 +197,12 @@ export default function Sidebar() {
             >
               <Key className="h-5 w-5 flex-shrink-0" />
               {!isCollapsed && <span>Cambiar Contraseña</span>}
-            </button>
+            </Button>
 
             {/* Botão de Logout */}
-            <button
-              onClick={signOut}
+            <Button
+              onClick={() => setShowLogoutDialog(true)}
+              variant="ghost"
               className={`w-full flex items-center gap-3 px-4 py-2 text-zinc-700 hover:bg-zinc-100 rounded-lg transition-colors ${
                 isCollapsed ? "justify-center" : ""
               }`}
@@ -203,14 +210,14 @@ export default function Sidebar() {
             >
               <LogOut className="h-5 w-5 flex-shrink-0" />
               {!isCollapsed && <span>Cerrar Sesión</span>}
-            </button>
+            </Button>
           </div>
 
           {/* Footer */}
           {!isCollapsed && (
             <div className="border-t border-zinc-200 px-6 py-4">
-              <p className="text-xs text-zinc-500">
-                © 2024 CelleCars. Todos los derechos reservados.
+              <p className="text-xs text-zinc-500 text-center font-semibold">
+                Development by Your<span className="text-purple-600">P</span>lat
               </p>
             </div>
           )}
@@ -220,8 +227,8 @@ export default function Sidebar() {
             onClick={() => setIsCollapsed(!isCollapsed)}
             variant="outline"
             size="icon"
-            className={`absolute -right-4 top-1/2 -translate-y-1/2 w-8 h-8 bg-white border-2 border-zinc-200 rounded-full shadow-md z-50 ${
-              isCollapsed ? "rotate-180" : ""
+            className={`absolute -right-4 top-[72px] -translate-y-1/2 w-8 h-8 bg-white border-2 border-zinc-200 rounded-full shadow-md z-50 ${
+              isCollapsed ? "" : "rotate-180"
             }`}
             aria-label={isCollapsed ? "Expandir menú" : "Colapsar menú"}
           >
@@ -229,6 +236,37 @@ export default function Sidebar() {
           </Button>
         </div>
       </aside>
+
+      {/* Modal Confirmar Logout */}
+      <Dialog open={showLogoutDialog} onOpenChange={setShowLogoutDialog}>
+        <DialogContent className="bg-white">
+          <DialogHeader>
+            <DialogTitle className="text-black">Confirmar Cierre de Sesión</DialogTitle>
+            <DialogDescription className="text-black">
+              ¿Está seguro de que desea cerrar sesión?
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setShowLogoutDialog(false)}
+              className="bg-white border-black text-black hover:bg-zinc-50"
+            >
+              Cancelar
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={() => {
+                setShowLogoutDialog(false);
+                signOut();
+              }}
+              className="bg-red-600 hover:bg-red-700 text-white"
+            >
+              Cerrar Sesión
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Modal Cambiar Contraseña */}
       <Dialog open={showChangePassword} onOpenChange={setShowChangePassword}>

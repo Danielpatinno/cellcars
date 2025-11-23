@@ -12,9 +12,10 @@ export default function ConditionalAppWrapper({
 }) {
   const pathname = usePathname();
   const isLoginPage = pathname === "/login";
+  const isUploadPage = pathname?.startsWith("/vehicles/upload");
 
-  // Se for página de login, não renderizar sidebar
-  if (isLoginPage) {
+  // Se for página de login ou upload, não renderizar sidebar
+  if (isLoginPage || isUploadPage) {
     return <>{children}</>;
   }
 
@@ -26,4 +27,5 @@ export default function ConditionalAppWrapper({
     </SidebarProvider>
   );
 }
+
 

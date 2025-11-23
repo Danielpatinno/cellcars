@@ -4,7 +4,8 @@ import { useState, useEffect, useRef } from "react";
 import { useRouter, useParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { ArrowLeft, Edit, Save, X, Trash2, ZoomIn, X as XIcon, DollarSign } from "lucide-react";
+import { ArrowLeft, Edit, Save, X, Trash2, ZoomIn, X as XIcon, DollarSign, MessageCircle, QrCode, Loader2 } from "lucide-react";
+import { toast } from "sonner";
 import {
   getVehicleById,
   updateVehicle,
@@ -21,9 +22,15 @@ import {
 } from "@/components/ui/dialog";
 import { CurrencyInput } from "@/components/ui/currency-input";
 import FormattedDate from "@/components/FormattedDate";
+import { QRCodeSVG } from "qrcode.react";
 
 interface VehicleWithImages extends Vehicle {
   images?: string[];
+  client?: {
+    id: number;
+    name: string;
+    phone: string;
+  } | null;
 }
 
 export default function VehicleDetailsPage() {
@@ -34,6 +41,45 @@ export default function VehicleDetailsPage() {
   const [loading, setLoading] = useState(true);
   const [editing, setEditing] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [showQRCode, setShowQRCode] = useState(false);
+  const [uploadUrl, setUploadUrl] = useState("");
+  const [showIPInput, setShowIPInput] = useState(false);
+  const [localIP, setLocalIP] = useState("");
+
+  // Função para formatar moeda (igual ao CurrencyInput)
+  const formatCurrency = (value: number) => {
+    if (value === 0 || value === null || value === undefined) return "0,00";
+    const formatted = (value / 100).toFixed(2).replace(".", ",");
+    const parts = formatted.split(",");
+    parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+    return parts.join(",");
+  };
+
+  // Função para abrir WhatsApp
+  const openWhatsApp = (phone: string) => {
+    try {
+      // Remove formatação e espaços
+      const cleanPhone = phone.replace(/\D/g, "");
+      if (!cleanPhone) {
+        toast.error("Número de telefone inválido");
+        return;
+      }
+      // Adiciona código do Paraguai se não tiver
+      const phoneWithCode = cleanPhone.startsWith("595") ? cleanPhone : `595${cleanPhone}`;
+      // Mensagem padrão
+      const message = encodeURIComponent("Hola");
+      // Abre WhatsApp em nova aba
+      const whatsappUrl = `https://wa.me/${phoneWithCode}?text=${message}`;
+      const newWindow = window.open(whatsappUrl, "_blank", "noopener,noreferrer");
+      if (!newWindow) {
+        toast.error("Por favor, permita pop-ups para abrir o WhatsApp");
+      }
+    } catch (error) {
+      console.error("Error opening WhatsApp:", error);
+      toast.error("Error al abrir WhatsApp");
+    }
+  };
+
   const [showZoomImage, setShowZoomImage] = useState(false);
   const [zoomedImageUrl, setZoomedImageUrl] = useState("");
   const [selectedImageIndex, setSelectedImageIndex] = useState(0);
@@ -59,6 +105,26 @@ export default function VehicleDetailsPage() {
     
     // Inicializar year
     setFormData((prev) => ({ ...prev, year: new Date().getFullYear() }));
+    
+    // Configurar URL de upload
+    if (typeof window !== 'undefined') {
+      const hostname = window.location.hostname;
+      const port = window.location.port || '3000';
+      
+      if (hostname === 'localhost' || hostname === '127.0.0.1') {
+        // Em desenvolvimento, verifica se tem IP salvo
+        const savedIP = localStorage.getItem('localIP');
+        if (savedIP) {
+          setUploadUrl(`http://${savedIP}:${port}/vehicles/${id}/upload`);
+        } else {
+          setShowIPInput(true);
+          setUploadUrl(`http://[CONFIGURE-IP]:${port}/vehicles/${id}/upload`);
+        }
+      } else {
+        // Em produção, usa a URL normal
+        setUploadUrl(`${window.location.origin}/vehicles/${id}/upload`);
+      }
+    }
   }, [id]);
 
   const loadVehicle = async () => {
@@ -140,17 +206,18 @@ export default function VehicleDetailsPage() {
       });
 
       if (result.success) {
+        toast.success("Vehículo actualizado exitosamente");
         setEditing(false);
         setImagesToRemove([]);
         setNewImagesFiles([]);
         setNewImagesPreview([]);
         loadVehicle();
       } else {
-        alert(result.message);
+        toast.error(result.message || "Error al actualizar vehículo");
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error updating vehicle:", error);
-      alert("Error al actualizar vehículo");
+      toast.error("Error al actualizar vehículo: " + (error.message || "Error desconocido"));
     } finally {
       setLoading(false);
     }
@@ -161,13 +228,14 @@ export default function VehicleDetailsPage() {
     try {
       const result = await deleteVehicle(id);
       if (result.success) {
+        toast.success("Vehículo eliminado exitosamente");
         router.push("/vehicles");
       } else {
-        alert(result.message);
+        toast.error(result.message || "Error al eliminar vehículo");
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error deleting vehicle:", error);
-      alert("Error al eliminar vehículo");
+      toast.error("Error al eliminar vehículo: " + (error.message || "Error desconocido"));
     } finally {
       setLoading(false);
     }
@@ -248,6 +316,16 @@ export default function VehicleDetailsPage() {
                 Vender Vehículo
               </Button>
             )}
+            {vehicle.status === "vendido" && vehicle.client && vehicle.client.phone && (
+              <Button
+                onClick={() => openWhatsApp(vehicle.client!.phone)}
+                variant="outline"
+                className="bg-green-50 border-green-600 text-green-600 hover:bg-green-100"
+              >
+                <MessageCircle className="mr-2 h-4 w-4" />
+                Enviar Mensaje
+              </Button>
+            )}
             <Button onClick={() => setEditing(true)} variant="outline" className="bg-white border-black text-black hover:bg-zinc-50">
               <Edit className="mr-2 h-4 w-4" />
               Editar
@@ -262,7 +340,11 @@ export default function VehicleDetailsPage() {
           </div>
         ) : (
           <div className="flex gap-2">
-            <Button onClick={handleSave} disabled={loading} variant="outline" className="bg-white border-black text-black hover:bg-zinc-50">
+            <Button 
+              onClick={handleSave} 
+              disabled={loading} 
+              className="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 text-base shadow-md"
+            >
               <Save className="mr-2 h-4 w-4" />
               Guardar
             </Button>
@@ -286,7 +368,18 @@ export default function VehicleDetailsPage() {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Galeria de Imágenes */}
         <div className="bg-white rounded-lg border border-zinc-200 p-6 shadow-sm">
-          <h2 className="text-xl font-semibold mb-4 text-black">Imágenes</h2>
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-xl font-semibold text-black">Imágenes</h2>
+            <Button
+              onClick={() => setShowQRCode(true)}
+              variant="outline"
+              size="sm"
+              className="bg-white border-black text-black hover:bg-zinc-50"
+            >
+              <QrCode className="mr-2 h-4 w-4" />
+              QR para Subir Fotos
+            </Button>
+          </div>
           {displayImages.length > 0 ? (
             <div className="space-y-4">
               {/* Imagen Principal */}
@@ -413,7 +506,7 @@ export default function VehicleDetailsPage() {
             <div className="space-y-4">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <label className="mb-1 block text-sm font-medium text-black">
+                  <label className="mb-1 block text-sm font-medium text-zinc-500">
                     Marca *
                   </label>
                   <Input
@@ -425,7 +518,7 @@ export default function VehicleDetailsPage() {
                   />
                 </div>
                 <div>
-                  <label className="mb-1 block text-sm font-medium text-black">
+                  <label className="mb-1 block text-sm font-medium text-zinc-500">
                     Modelo *
                   </label>
                   <Input
@@ -437,7 +530,7 @@ export default function VehicleDetailsPage() {
                   />
                 </div>
                 <div>
-                  <label className="mb-1 block text-sm font-medium text-black">
+                  <label className="mb-1 block text-sm font-medium text-zinc-500">
                     Año *
                   </label>
                   <Input
@@ -450,7 +543,7 @@ export default function VehicleDetailsPage() {
                   />
                 </div>
                 <div>
-                  <label className="mb-1 block text-sm font-medium text-black">
+                  <label className="mb-1 block text-sm font-medium text-zinc-500">
                     Color
                   </label>
                   <Input
@@ -461,7 +554,7 @@ export default function VehicleDetailsPage() {
                   />
                 </div>
                 <div>
-                  <label className="mb-1 block text-sm font-medium text-black">
+                  <label className="mb-1 block text-sm font-medium text-zinc-500">
                     Precio de Costo *
                   </label>
                   <CurrencyInput
@@ -472,7 +565,7 @@ export default function VehicleDetailsPage() {
                   />
                 </div>
                 <div>
-                  <label className="mb-1 block text-sm font-medium text-black">
+                  <label className="mb-1 block text-sm font-medium text-zinc-500">
                     Precio de Venta *
                   </label>
                   <CurrencyInput
@@ -484,8 +577,8 @@ export default function VehicleDetailsPage() {
                 </div>
                 {formData.cost_price > 0 && (
                   <div>
-                    <label className="mb-1 block text-sm font-medium text-black">
-                      Margen de Lucro
+                    <label className="mb-1 block text-sm font-medium text-zinc-500">
+                      Margen de Ganancia
                     </label>
                     <div className="px-3 py-2 bg-blue-50 border border-blue-200 rounded-lg">
                       <span className="text-blue-900 font-semibold">
@@ -495,8 +588,8 @@ export default function VehicleDetailsPage() {
                   </div>
                 )}
                 <div>
-                  <label className="mb-1 block text-sm font-medium text-black">
-                    Placa
+                  <label className="mb-1 block text-sm font-medium text-zinc-500">
+                    Chapa
                   </label>
                   <Input
                     value={formData.plate}
@@ -506,7 +599,7 @@ export default function VehicleDetailsPage() {
                   />
                 </div>
                 <div>
-                  <label className="mb-1 block text-sm font-medium text-black">
+                  <label className="mb-1 block text-sm font-medium text-zinc-500">
                     Kilometraje
                   </label>
                   <Input
@@ -518,7 +611,7 @@ export default function VehicleDetailsPage() {
                   />
                 </div>
                 <div>
-                  <label className="mb-1 block text-sm font-medium text-black">
+                  <label className="mb-1 block text-sm font-medium text-zinc-500">
                     Estado *
                   </label>
                   <select
@@ -538,31 +631,31 @@ export default function VehicleDetailsPage() {
           ) : (
             <div className="space-y-4">
               <div>
-                <label className="text-sm font-medium text-black">Marca</label>
+                <label className="text-sm font-medium text-zinc-500">Marca</label>
                 <p className="mt-1 text-lg text-zinc-900 font-medium">{vehicle.brand}</p>
               </div>
               <div>
-                <label className="text-sm font-medium text-black">Modelo</label>
+                <label className="text-sm font-medium text-zinc-500">Modelo</label>
                 <p className="mt-1 text-lg text-zinc-900 font-medium">{vehicle.model}</p>
               </div>
               <div>
-                <label className="text-sm font-medium text-black">Año</label>
+                <label className="text-sm font-medium text-zinc-500">Año</label>
                 <p className="mt-1 text-lg text-zinc-900">{vehicle.year}</p>
               </div>
               <div>
-                <label className="text-sm font-medium text-black">Color</label>
+                <label className="text-sm font-medium text-zinc-500">Color</label>
                 <p className="mt-1 text-lg text-zinc-900">{vehicle.color || "-"}</p>
               </div>
               <div>
-                <label className="text-sm font-medium text-black">Placa</label>
+                <label className="text-sm font-medium text-zinc-500">Chapa</label>
                 <p className="mt-1 text-lg text-zinc-900">{vehicle.plate}</p>
               </div>
               <div>
-                <label className="text-sm font-medium text-black">Kilometraje</label>
+                <label className="text-sm font-medium text-zinc-500">Kilometraje</label>
                 <p className="mt-1 text-lg text-zinc-900">{vehicle.mileage.toLocaleString("es-ES")} km</p>
               </div>
               <div>
-                <label className="text-sm font-medium text-black">Estado</label>
+                <label className="text-sm font-medium text-zinc-500">Estado</label>
                 <p className="mt-1">
                   <span
                     className={`px-2 py-1 text-sm font-medium rounded ${
@@ -590,20 +683,20 @@ export default function VehicleDetailsPage() {
             <h2 className="text-xl font-semibold mb-4 text-black">Información Financiera</h2>
             <div className="space-y-4">
               <div>
-                <label className="text-sm font-medium text-black">Precio de Costo</label>
+                <label className="text-sm font-medium text-zinc-500">Precio de Costo</label>
                 <p className="mt-1 text-lg text-zinc-900 font-semibold">
-                  ${((vehicle.cost_price || 0) / 100).toFixed(2).replace(".", ",")}
+                  ${formatCurrency(vehicle.cost_price || 0)}
                 </p>
               </div>
               <div>
-                <label className="text-sm font-medium text-black">Precio de Venta</label>
+                <label className="text-sm font-medium text-zinc-500">Precio de Venta</label>
                 <p className="mt-1 text-lg text-zinc-900 font-semibold">
-                  ${((vehicle.price || 0) / 100).toFixed(2).replace(".", ",")}
+                  ${formatCurrency(vehicle.price || 0)}
                 </p>
               </div>
               {vehicle.cost_price > 0 && (
                 <div>
-                  <label className="text-sm font-medium text-black">Margen de Lucro</label>
+                  <label className="text-sm font-medium text-zinc-500">Margen de Ganancia</label>
                   <p className="mt-1 text-2xl font-bold text-blue-600">
                     {calculateProfitMargin()}%
                   </p>
@@ -617,14 +710,14 @@ export default function VehicleDetailsPage() {
             <h2 className="text-xl font-semibold mb-4 text-black">Información Adicional</h2>
             <div className="space-y-4">
               <div>
-                <label className="text-sm font-medium text-black">Fecha de Registro</label>
+                <label className="text-sm font-medium text-zinc-500">Fecha de Registro</label>
                 <p className="mt-1 text-lg text-zinc-900">
                   <FormattedDate date={vehicle.created_at} format="date" />
                 </p>
               </div>
               {(vehicle as any).sale_date && (
                 <div>
-                  <label className="text-sm font-medium text-black">Fecha de Venta</label>
+                  <label className="text-sm font-medium text-zinc-500">Fecha de Venta</label>
                   <p className="mt-1 text-lg text-zinc-900">
                     <FormattedDate date={(vehicle as any).sale_date} format="date" />
                   </p>
@@ -676,10 +769,10 @@ export default function VehicleDetailsPage() {
 
       {/* Dialog de confirmação de exclusão */}
       <Dialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
-        <DialogContent>
+        <DialogContent className="bg-white">
           <DialogHeader>
-            <DialogTitle>Confirmar Eliminación</DialogTitle>
-            <DialogDescription>
+            <DialogTitle className="text-black">Confirmar Eliminación</DialogTitle>
+            <DialogDescription className="text-black">
               ¿Está seguro de que desea eliminar este vehículo? Esta acción no se puede
               deshacer.
             </DialogDescription>
@@ -691,8 +784,72 @@ export default function VehicleDetailsPage() {
             >
               Cancelar
             </Button>
-            <Button variant="destructive" onClick={handleDelete}>
+            <Button 
+              variant="destructive" 
+              onClick={handleDelete}
+              className="bg-red-600 hover:bg-red-700 text-white"
+            >
               Eliminar
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Dialog do QR Code */}
+      <Dialog open={showQRCode} onOpenChange={setShowQRCode}>
+        <DialogContent className="bg-white">
+          <DialogHeader>
+            <DialogTitle className="text-black">Escanea para Subir Fotos</DialogTitle>
+            <DialogDescription className="text-black">
+              Escanea este código QR con tu celular para subir fotos directamente
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            {showIPInput && (
+              <div className="space-y-2">
+                <p className="text-sm text-zinc-600">
+                  Para usar en desarrollo, informe el IP local de su máquina:
+                </p>
+                <Input
+                  type="text"
+                  placeholder="Ex: 192.168.1.100"
+                  value={localIP}
+                  onChange={(e) => {
+                    const ip = e.target.value;
+                    setLocalIP(ip);
+                    if (ip) {
+                      const port = window.location.port || '3000';
+                      const newUrl = `http://${ip}:${port}/vehicles/${id}/upload`;
+                      setUploadUrl(newUrl);
+                      localStorage.setItem('localIP', ip);
+                      setShowIPInput(false);
+                    }
+                  }}
+                  className="border-black text-black"
+                />
+                <p className="text-xs text-zinc-500">
+                  Descubra su IP: Windows (ipconfig) o Mac/Linux (ifconfig)
+                </p>
+              </div>
+            )}
+            {uploadUrl && !uploadUrl.includes('[CONFIGURE-IP]') && (
+              <div className="flex flex-col items-center">
+                <div className="bg-white p-4 rounded-lg border border-zinc-200">
+                  <QRCodeSVG value={uploadUrl} size={256} />
+                </div>
+                <p className="text-xs text-zinc-500 mt-4 text-center break-all px-4">
+                  {uploadUrl}
+                </p>
+              </div>
+            )}
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setShowQRCode(false)}
+              className="bg-white border-black text-black hover:bg-zinc-50"
+            >
+              Cerrar
             </Button>
           </DialogFooter>
         </DialogContent>

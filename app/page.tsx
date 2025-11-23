@@ -17,14 +17,23 @@ import {
   getPendingInstallmentsCount,
   getSalesCountThisMonth,
 } from "./sales/actions";
+import { useAuth } from "./hooks/useAuth";
 
 export default function Home() {
   const router = useRouter();
+  const { user } = useAuth();
   const [vehiclesCount, setVehiclesCount] = useState(0);
   const [clientsCount, setClientsCount] = useState(0);
   const [pendingCount, setPendingCount] = useState(0);
   const [salesCount, setSalesCount] = useState(0);
   const [loading, setLoading] = useState(true);
+
+  // Extrair nome do usuário do email (parte antes do @)
+  const getUserName = () => {
+    if (!user?.email) return "Usuario";
+    const emailParts = user.email.split("@");
+    return emailParts[0].charAt(0).toUpperCase() + emailParts[0].slice(1);
+  };
 
   useEffect(() => {
     loadCounts();
@@ -100,7 +109,7 @@ export default function Home() {
   return (
     <div className="p-8 bg-white min-h-screen">
       <div className="mb-8">
-        <h1 className="text-3xl font-bold text-zinc-900">Bienvenido a CelleCars</h1>
+        <h1 className="text-3xl font-bold text-zinc-900">Bienvenido, {getUserName()}</h1>
         <p className="text-zinc-600 mt-2">
           Tu sistema de gestión
         </p>
@@ -131,11 +140,11 @@ export default function Home() {
       <div className="bg-white rounded-lg border border-zinc-200 p-6 shadow-sm">
         <h2 className="text-xl font-semibold mb-4 text-black">Acciones Rápidas</h2>
         <div className="flex flex-wrap gap-4">
-          <Button onClick={() => router.push("/vehicles?new=true")} variant="outline" className="bg-white border-black text-black hover:bg-zinc-50">
+          <Button onClick={() => router.push("/vehicles/new")} variant="outline" className="bg-white border-black text-black hover:bg-zinc-50">
             <Plus className="mr-2 h-4 w-4" />
             Agregar Vehículo
           </Button>
-          <Button onClick={() => router.push("/clientes?new=true")} variant="outline" className="bg-white border-black text-black hover:bg-zinc-50">
+          <Button onClick={() => router.push("/clientes/new")} variant="outline" className="bg-white border-black text-black hover:bg-zinc-50">
             <Plus className="mr-2 h-4 w-4" />
             Nuevo Cliente
           </Button>

@@ -1,6 +1,7 @@
 "use server";
 
 import { createServerAdmin } from "@/lib/supabase/server";
+import { createClient } from "@supabase/supabase-js";
 
 export interface Vehicle {
   id: number;
@@ -37,6 +38,8 @@ export async function createVehicle(data: {
   images: File[];
 }) {
   const supabase = await createServerAdmin();
+  
+  console.log("createVehicle chamado com", data.images?.length || 0, "imagens");
 
   // Inserir veículo
   const { data: vehicle, error: vehicleError } = await supabase
@@ -61,54 +64,94 @@ export async function createVehicle(data: {
 
   // Upload de imagens
   if (data.images && data.images.length > 0) {
+    console.log("Iniciando upload de", data.images.length, "imagens");
     const imageUrls: string[] = [];
+    const uploadErrors: string[] = [];
+
+    // Criar cliente admin direto para storage (bypassa RLS)
+    const storageClient = createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_ROLE_KEY!,
+      {
+        auth: {
+          autoRefreshToken: false,
+          persistSession: false
+        }
+      }
+    );
 
     for (const image of data.images) {
-      const fileExt = image.name.split(".").pop();
-      const fileName = `${vehicle.id}_${Date.now()}_${Math.random().toString(36).substring(7)}.${fileExt}`;
-      const filePath = `images/${fileName}`;
+      console.log("Processando imagem:", image.name, "tipo:", image.type, "tamanho:", image.size);
+      try {
+        const fileExt = image.name.split(".").pop();
+        const fileName = `${vehicle.id}_${Date.now()}_${Math.random().toString(36).substring(7)}.${fileExt}`;
+        const filePath = `images/${fileName}`;
 
-      // Converter File para ArrayBuffer
-      const arrayBuffer = await image.arrayBuffer();
-      const fileBytes = new Uint8Array(arrayBuffer);
+        // Converter File para ArrayBuffer
+        const arrayBuffer = await image.arrayBuffer();
+        const fileBytes = new Uint8Array(arrayBuffer);
 
-      // Upload para Supabase Storage
-      const { error: uploadError } = await supabase.storage
-        .from("cellecars")
-        .upload(filePath, fileBytes, {
-          contentType: image.type,
-          upsert: false,
-        });
+        // Upload para Supabase Storage usando cliente admin direto
+        const { error: uploadError } = await storageClient.storage
+          .from("cellecars")
+          .upload(filePath, fileBytes, {
+            contentType: image.type,
+            upsert: false,
+          });
 
-      if (uploadError) {
-        console.error("Error uploading image:", uploadError);
-        continue;
-      }
+        if (uploadError) {
+          console.error("Error uploading image:", uploadError);
+          uploadErrors.push(`Erro ao fazer upload de ${image.name}: ${uploadError.message}`);
+          continue;
+        }
 
-      // Obter URL pública da imagem
-      const { data: urlData } = supabase.storage
-        .from("cellecars")
-        .getPublicUrl(filePath);
+        // Obter URL pública da imagem
+        const { data: urlData } = storageClient.storage
+          .from("cellecars")
+          .getPublicUrl(filePath);
 
-      if (urlData?.publicUrl) {
-        imageUrls.push(urlData.publicUrl);
+        if (urlData?.publicUrl) {
+          console.log("Imagem enviada com sucesso, URL:", urlData.publicUrl);
+          imageUrls.push(urlData.publicUrl);
+        } else {
+          console.error("Não foi possível obter URL pública da imagem");
+          uploadErrors.push(`Não foi possível obter URL de ${image.name}`);
+        }
+      } catch (error: any) {
+        console.error("Error processing image:", error);
+        uploadErrors.push(`Erro ao processar ${image.name}: ${error.message}`);
       }
     }
 
     // Salvar URLs na tabela vehicles_files
     if (imageUrls.length > 0) {
+      console.log("Salvando", imageUrls.length, "URLs na tabela vehicles_files");
       const filesToInsert = imageUrls.map((url) => ({
         vehicle_id: vehicle.id,
         url_img: url,
       }));
 
-      const { error: filesError } = await supabase
+      const { error: filesError, data: insertedData } = await supabase
         .from("vehicles_files")
-        .insert(filesToInsert);
+        .insert(filesToInsert)
+        .select();
 
       if (filesError) {
         console.error("Error saving image URLs:", filesError);
+        return { 
+          success: false, 
+          message: `Vehículo creado pero error al guardar imágenes en la base de datos: ${filesError.message}. Código: ${filesError.code}` 
+        };
       }
+      
+      console.log("Imagens salvas com sucesso na tabela:", insertedData?.length || 0);
+    } else if (data.images.length > 0) {
+      // Se havia imagens mas nenhuma foi salva
+      console.error("Nenhuma imagem foi salva. Erros:", uploadErrors);
+      return { 
+        success: false, 
+        message: `Vehículo creado pero no se pudieron subir las imágenes. Errores: ${uploadErrors.join(", ")}` 
+      };
     }
   }
 
@@ -162,12 +205,16 @@ export async function getVehicleById(id: number) {
     return null;
   }
 
-  // Buscar data de venda (se o veículo foi vendido)
+  // Buscar data de venda e informações do cliente (se o veículo foi vendido)
   let saleDate = null;
+  let clientInfo = null;
   if (vehicle.status === "vendido") {
     const { data: sale } = await supabase
       .from("sales")
-      .select("sale_date")
+      .select(`
+        sale_date,
+        client:clients(id, name, phone)
+      `)
       .eq("vehicle_id", vehicle.id)
       .order("sale_date", { ascending: false })
       .limit(1)
@@ -175,6 +222,7 @@ export async function getVehicleById(id: number) {
     
     if (sale) {
       saleDate = sale.sale_date;
+      clientInfo = sale.client;
     }
   }
 
@@ -189,6 +237,7 @@ export async function getVehicleById(id: number) {
     ...vehicle,
     images: files?.map((f) => f.url_img) || [],
     sale_date: saleDate,
+    client: clientInfo,
   };
 }
 
@@ -235,6 +284,18 @@ export async function updateVehicle(
 
   // Remover imagens
   if (data.imagesToRemove && data.imagesToRemove.length > 0) {
+    // Criar cliente admin direto para storage (bypassa RLS)
+    const storageClient = createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_ROLE_KEY!,
+      {
+        auth: {
+          autoRefreshToken: false,
+          persistSession: false
+        }
+      }
+    );
+
     for (const imageUrl of data.imagesToRemove) {
       // Extrair caminho do arquivo da URL
       const urlParts = imageUrl.split("/");
@@ -242,7 +303,7 @@ export async function updateVehicle(
       const filePath = `images/${fileName}`;
 
       // Deletar do storage
-      await supabase.storage.from("cellecars").remove([filePath]);
+      await storageClient.storage.from("cellecars").remove([filePath]);
 
       // Deletar registro da tabela
       await supabase
@@ -256,6 +317,18 @@ export async function updateVehicle(
   if (data.newImages && data.newImages.length > 0) {
     const imageUrls: string[] = [];
 
+    // Criar cliente admin direto para storage (bypassa RLS)
+    const storageClient = createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_ROLE_KEY!,
+      {
+        auth: {
+          autoRefreshToken: false,
+          persistSession: false
+        }
+      }
+    );
+
     for (const image of data.newImages) {
       const fileExt = image.name.split(".").pop();
       const fileName = `${id}_${Date.now()}_${Math.random().toString(36).substring(7)}.${fileExt}`;
@@ -264,7 +337,7 @@ export async function updateVehicle(
       const arrayBuffer = await image.arrayBuffer();
       const fileBytes = new Uint8Array(arrayBuffer);
 
-      const { error: uploadError } = await supabase.storage
+      const { error: uploadError } = await storageClient.storage
         .from("cellecars")
         .upload(filePath, fileBytes, {
           contentType: image.type,
@@ -276,7 +349,7 @@ export async function updateVehicle(
         continue;
       }
 
-      const { data: urlData } = supabase.storage
+      const { data: urlData } = storageClient.storage
         .from("cellecars")
         .getPublicUrl(filePath);
 
@@ -324,13 +397,25 @@ export async function deleteVehicle(id: number) {
     .select("url_img")
     .eq("vehicle_id", id);
 
+  // Criar cliente admin direto para storage (bypassa RLS)
+  const storageClient = createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!,
+    {
+      auth: {
+        autoRefreshToken: false,
+        persistSession: false
+      }
+    }
+  );
+
   // Deletar imagens do storage
   if (files && files.length > 0) {
     for (const file of files) {
       const urlParts = file.url_img.split("/");
       const fileName = urlParts[urlParts.length - 1];
       const filePath = `images/${fileName}`;
-      await supabase.storage.from("cellecars").remove([filePath]);
+      await storageClient.storage.from("cellecars").remove([filePath]);
     }
   }
 

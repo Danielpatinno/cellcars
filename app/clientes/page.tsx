@@ -1,12 +1,13 @@
 "use client";
 
 import { useState, useEffect, useMemo, Suspense } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Users, Plus, Search, Edit, Trash2 } from "lucide-react";
+import { toast } from "sonner";
+import { TableLoading } from "@/components/ui/table-loading";
 import {
-  createClient,
   getClients,
   deleteClient,
   Client,
@@ -23,30 +24,37 @@ import FormattedDate from "@/components/FormattedDate";
 
 function ClientesPageContent() {
   const router = useRouter();
-  const searchParams = useSearchParams();
   const [clientes, setClientes] = useState<Client[]>([]);
-  const [showForm, setShowForm] = useState(false);
   const [loading, setLoading] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [clientToDelete, setClientToDelete] = useState<Client | null>(null);
-  const [formData, setFormData] = useState({
-    name: "",
-    cin: "",
-    phone: "",
-    email: "",
-    address: "",
-    birth_date: "",
-  });
+
+  // Função para formatar C.I.N (agrupa de 3 em 3 com pontos)
+  const formatCIN = (value: string) => {
+    if (!value) return "";
+    const numbers = value.replace(/\D/g, "");
+    if (numbers.length <= 3) return numbers;
+    const formatted = numbers.replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+    return formatted;
+  };
+
+  // Função para formatar telefone paraguaio (0986 381-491)
+  const formatPhone = (value: string) => {
+    if (!value) return "";
+    const numbers = value.replace(/\D/g, "");
+    const limited = numbers.slice(0, 10);
+    
+    if (limited.length <= 4) return limited;
+    if (limited.length <= 7) {
+      return `${limited.slice(0, 4)} ${limited.slice(4)}`;
+    }
+    return `${limited.slice(0, 4)} ${limited.slice(4, 7)}-${limited.slice(7)}`;
+  };
 
   useEffect(() => {
     loadClientes();
-    
-    // Verificar se deve abrir o formulário
-    if (searchParams.get("new") === "true") {
-      setShowForm(true);
-    }
-  }, [searchParams]);
+  }, []);
 
   const loadClientes = async () => {
     setLoading(true);
@@ -72,41 +80,6 @@ function ClientesPageContent() {
     );
   }, [clientes, searchTerm]);
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setLoading(true);
-
-    try {
-      const result = await createClient({
-        name: formData.name,
-        cin: formData.cin,
-        phone: formData.phone,
-        email: formData.email || undefined,
-        address: formData.address || undefined,
-        birth_date: formData.birth_date || undefined,
-      });
-
-      if (result.success) {
-        setShowForm(false);
-        setFormData({
-          name: "",
-          cin: "",
-          phone: "",
-          email: "",
-          address: "",
-          birth_date: "",
-        });
-        loadClientes();
-      } else {
-        alert(result.message);
-      }
-    } catch (error) {
-      console.error("Error creating client:", error);
-      alert("Error al crear cliente");
-    } finally {
-      setLoading(false);
-    }
-  };
 
   const handleDelete = async () => {
     if (!clientToDelete) return;
@@ -115,15 +88,16 @@ function ClientesPageContent() {
     try {
       const result = await deleteClient(clientToDelete.id);
       if (result.success) {
+        toast.success("Cliente eliminado exitosamente");
         setShowDeleteDialog(false);
         setClientToDelete(null);
         loadClientes();
       } else {
-        alert(result.message);
+        toast.error(result.message || "Error al eliminar cliente");
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error deleting client:", error);
-      alert("Error al eliminar cliente");
+      toast.error("Error al eliminar cliente: " + (error.message || "Error desconocido"));
     } finally {
       setLoading(false);
     }
@@ -136,7 +110,7 @@ function ClientesPageContent() {
           <h1 className="text-3xl font-bold text-zinc-900">Clientes</h1>
           <p className="text-zinc-600 mt-1">Gestión de clientes</p>
         </div>
-        <Button onClick={() => setShowForm(true)} variant="outline" className="bg-white border-black text-black hover:bg-zinc-50">
+        <Button onClick={() => router.push("/clientes/new")} variant="outline" className="bg-white border-black text-black hover:bg-zinc-50">
           <Plus className="mr-2 h-4 w-4" />
           Nuevo Cliente
         </Button>
@@ -156,119 +130,41 @@ function ClientesPageContent() {
         </div>
       </div>
 
-      {/* Formulário */}
-      {showForm && (
-        <div className="mb-6 bg-white border border-zinc-200 rounded-lg p-6 shadow-sm">
-          <h2 className="text-xl font-semibold mb-4 text-black">Nuevo Cliente</h2>
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <label className="mb-1 block text-sm font-medium text-black">
-                  Nombre Completo *
-                </label>
-                <Input
-                  required
-                  value={formData.name}
-                  onChange={(e) =>
-                    setFormData({ ...formData, name: e.target.value })
-                  }
-                  placeholder="Nombre completo"
-                />
-              </div>
-              <div>
-                <label className="mb-1 block text-sm font-medium text-black">
-                  C.I.N *
-                </label>
-                <Input
-                  required
-                  value={formData.cin}
-                  onChange={(e) =>
-                    setFormData({ ...formData, cin: e.target.value })
-                  }
-                  placeholder="Cédula de Identidad"
-                />
-              </div>
-              <div>
-                <label className="mb-1 block text-sm font-medium text-black">
-                  Teléfono *
-                </label>
-                <Input
-                  required
-                  value={formData.phone}
-                  onChange={(e) =>
-                    setFormData({ ...formData, phone: e.target.value })
-                  }
-                  placeholder="Teléfono"
-                />
-              </div>
-              <div>
-                <label className="mb-1 block text-sm font-medium text-black">
-                  Correo Electrónico
-                </label>
-                <Input
-                  type="email"
-                  value={formData.email}
-                  onChange={(e) =>
-                    setFormData({ ...formData, email: e.target.value })
-                  }
-                  placeholder="correo@ejemplo.com"
-                />
-              </div>
-              <div>
-                <label className="mb-1 block text-sm font-medium text-black">
-                  Dirección
-                </label>
-                <Input
-                  value={formData.address}
-                  onChange={(e) =>
-                    setFormData({ ...formData, address: e.target.value })
-                  }
-                  placeholder="Dirección"
-                />
-              </div>
-              <div>
-                <label className="mb-1 block text-sm font-medium text-black">
-                  Fecha de Nacimiento
-                </label>
-                <Input
-                  type="date"
-                  value={formData.birth_date}
-                  onChange={(e) =>
-                    setFormData({ ...formData, birth_date: e.target.value })
-                  }
-                />
-              </div>
-            </div>
-            <div className="flex gap-2">
-              <Button type="submit" disabled={loading}>
-                Guardar Cliente
-              </Button>
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => {
-                  setShowForm(false);
-                  setFormData({
-                    name: "",
-                    cin: "",
-                    phone: "",
-                    email: "",
-                    address: "",
-                    birth_date: "",
-                  });
-                }}
-              >
-                Cancelar
-              </Button>
-            </div>
-          </form>
-        </div>
-      )}
-
       {/* Lista de clientes */}
       {loading && !clientes.length ? (
-        <div className="text-center py-12">
-          <p className="text-zinc-600">Cargando clientes...</p>
+        <div className="bg-white rounded-lg border border-zinc-200 overflow-hidden">
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead className="bg-zinc-50 border-b border-zinc-200">
+                <tr>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-black uppercase tracking-wider">
+                    Nombre
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-black uppercase tracking-wider">
+                    C.I.N
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-black uppercase tracking-wider">
+                    Teléfono
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-black uppercase tracking-wider">
+                    Correo
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-black uppercase tracking-wider">
+                    Fecha Nac.
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-black uppercase tracking-wider">
+                    Registrado
+                  </th>
+                  <th className="px-6 py-3 text-right text-xs font-medium text-zinc-700 uppercase tracking-wider">
+                    Acciones
+                  </th>
+                </tr>
+              </thead>
+              <tbody className="bg-white divide-y divide-zinc-200">
+                <TableLoading colSpan={7} message="Cargando clientes..." />
+              </tbody>
+            </table>
+          </div>
         </div>
       ) : filteredClients.length === 0 ? (
         <div className="text-center py-12 bg-white rounded-lg border border-zinc-200">
@@ -321,11 +217,11 @@ function ClientesPageContent() {
                       </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm text-zinc-600">{cliente.cin}</div>
+                      <div className="text-sm text-zinc-600">{formatCIN(cliente.cin)}</div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="text-sm text-zinc-600">
-                        {cliente.phone}
+                        {formatPhone(cliente.phone)}
                       </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
@@ -383,10 +279,10 @@ function ClientesPageContent() {
 
       {/* Dialog de confirmação de exclusão */}
       <Dialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
-        <DialogContent>
+        <DialogContent className="bg-white">
           <DialogHeader>
-            <DialogTitle>Confirmar Eliminación</DialogTitle>
-            <DialogDescription>
+            <DialogTitle className="text-black">Confirmar Eliminación</DialogTitle>
+            <DialogDescription className="text-black">
               ¿Está seguro de que desea eliminar al cliente{" "}
               <strong>{clientToDelete?.name}</strong>? Esta acción no se puede
               deshacer.
@@ -402,7 +298,11 @@ function ClientesPageContent() {
             >
               Cancelar
             </Button>
-            <Button variant="destructive" onClick={handleDelete}>
+            <Button 
+              variant="destructive" 
+              onClick={handleDelete}
+              className="bg-red-600 hover:bg-red-700 text-white"
+            >
               Eliminar
             </Button>
           </DialogFooter>
