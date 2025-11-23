@@ -34,6 +34,7 @@ export default function NewVehiclePage() {
   });
   const [imagensFiles, setImagensFiles] = useState<File[]>([]);
   const [imagensPreview, setImagensPreview] = useState<string[]>([]);
+  const [removedImageUrls, setRemovedImageUrls] = useState<Set<string>>(new Set());
   const [showQRCode, setShowQRCode] = useState(false);
   const [uploadUrl, setUploadUrl] = useState("");
   const [showIPInput, setShowIPInput] = useState(false);
@@ -83,6 +84,15 @@ export default function NewVehiclePage() {
           const loadedPreviews: string[] = [];
           
           for (const url of result.urls) {
+            // Ignorar URLs que foram removidas pelo usuário
+            if (removedImageUrls.has(url)) {
+              continue;
+            }
+            // Ignorar URLs que já estão nas previews
+            if (imagensPreview.includes(url)) {
+              continue;
+            }
+            
             try {
               const imageResponse = await fetch(url);
               const blob = await imageResponse.blob();
@@ -96,9 +106,9 @@ export default function NewVehiclePage() {
           }
           
           // Só atualizar se houver novas imagens
-          if (loadedFiles.length > imagensFiles.length) {
-            setImagensFiles(loadedFiles);
-            setImagensPreview(loadedPreviews);
+          if (loadedFiles.length > 0) {
+            setImagensFiles((prev) => [...prev, ...loadedFiles]);
+            setImagensPreview((prev) => [...prev, ...loadedPreviews]);
             toast.success(`${loadedFiles.length} imagen(es) cargada(s) desde el celular`);
             
             // Limpar imagens temporárias do localStorage após carregar (já estão no servidor)
@@ -145,7 +155,7 @@ export default function NewVehiclePage() {
     }, 2000); // Verifica a cada 2 segundos
     
     return () => clearInterval(interval);
-  }, [uploadToken, imagensFiles.length]);
+  }, [uploadToken, imagensFiles.length, imagensPreview, removedImageUrls]);
 
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
@@ -173,6 +183,11 @@ export default function NewVehiclePage() {
   };
 
   const removeImage = (index: number) => {
+    const removedUrl = imagensPreview[index];
+    // Marcar URL como removida para não buscar novamente
+    if (removedUrl) {
+      setRemovedImageUrls((prev) => new Set(prev).add(removedUrl));
+    }
     setImagensPreview((prev) => prev.filter((_, i) => i !== index));
     setImagensFiles((prev) => prev.filter((_, i) => i !== index));
   };

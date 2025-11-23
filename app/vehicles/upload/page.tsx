@@ -82,9 +82,21 @@ function VehicleUploadPageContent() {
         body: formData,
       });
 
+      if (!response.ok) {
+        const errorText = await response.text();
+        let errorMessage = "Error al subir imágenes";
+        try {
+          const errorJson = JSON.parse(errorText);
+          errorMessage = errorJson.error || errorMessage;
+        } catch {
+          errorMessage = errorText || errorMessage;
+        }
+        throw new Error(errorMessage);
+      }
+
       const result = await response.json();
 
-      if (!response.ok || !result.success) {
+      if (!result.success) {
         throw new Error(result.error || "Error al subir imágenes");
       }
 
