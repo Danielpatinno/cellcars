@@ -31,7 +31,6 @@ export default function NewSalePage() {
       receipt_number: string;
       amount: number;
       due_date: string;
-      notes: string;
     }[]
   >([]);
 
