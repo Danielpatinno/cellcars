@@ -3,21 +3,11 @@
 import { useState, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
-import { Car, X, Image as ImageIcon, Upload, Loader2, ArrowLeft, QrCode } from "lucide-react";
+import { Car, X, Image as ImageIcon, Upload, Loader2, ArrowLeft } from "lucide-react";
 import { createVehicle } from "../actions";
 import { CurrencyInput } from "@/components/ui/currency-input";
 import { toast } from "sonner";
 import { compressImages } from "@/lib/image-compression";
-import { QRCodeSVG } from "qrcode.react";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
 
 export default function NewVehiclePage() {
   const router = useRouter();
@@ -35,174 +25,11 @@ export default function NewVehiclePage() {
   });
   const [imagensFiles, setImagensFiles] = useState<File[]>([]);
   const [imagensPreview, setImagensPreview] = useState<string[]>([]);
-  const [removedImageUrls, setRemovedImageUrls] = useState<Set<string>>(new Set());
-  const [showQRCode, setShowQRCode] = useState(false);
-  const [uploadUrl, setUploadUrl] = useState("");
-  const [showIPInput, setShowIPInput] = useState(false);
-  const [localIP, setLocalIP] = useState("");
-  const [uploadToken, setUploadToken] = useState("");
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     setFormData((prev) => ({ ...prev, year: new Date().getFullYear() }));
-    
-    // Gerar token único para este formulário
-    const token = `temp_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-    setUploadToken(token);
-    
-    // Configurar URL de upload
-    if (typeof window !== 'undefined') {
-      const hostname = window.location.hostname;
-      const port = window.location.port || '3000';
-      
-      if (hostname === 'localhost' || hostname === '127.0.0.1') {
-        const savedIP = localStorage.getItem('localIP');
-        if (savedIP) {
-          setUploadUrl(`http://${savedIP}:${port}/vehicles/upload?token=${token}`);
-        } else {
-          setShowIPInput(true);
-          setUploadUrl(`http://[CONFIGURE-IP]:${port}/vehicles/upload?token=${token}`);
-        }
-      } else {
-        setUploadUrl(`${window.location.origin}/vehicles/upload?token=${token}`);
-      }
-    }
   }, []);
-
-  // Verificar periodicamente se há novas imagens (quando o usuário volta do celular)
-  useEffect(() => {
-    if (!uploadToken) return;
-    
-    const loadTempImages = async () => {
-      try {
-        // Primeiro, tentar buscar do servidor
-        const response = await fetch(`/api/vehicles/upload-temp?token=${uploadToken}`);
-        const result = await response.json();
-        
-        if (result.success && result.urls && result.urls.length > 0) {
-          // Converter URLs para Files
-          const loadedFiles: File[] = [];
-          const loadedPreviews: string[] = [];
-          
-          for (const url of result.urls) {
-            // Ignorar URLs que foram removidas pelo usuário
-            if (removedImageUrls.has(url)) {
-              continue;
-            }
-            // Ignorar URLs que já estão nas previews
-            if (imagensPreview.includes(url)) {
-              continue;
-            }
-            
-            try {
-              const imageResponse = await fetch(url);
-              const blob = await imageResponse.blob();
-              const fileName = url.split('/').pop() || `image_${Date.now()}.jpg`;
-              const file = new File([blob], fileName, { type: blob.type });
-              loadedFiles.push(file);
-              loadedPreviews.push(url);
-            } catch (error) {
-              console.error("Error loading image from URL:", error);
-            }
-          }
-          
-          // Só atualizar se houver novas imagens e não exceder o limite de 6
-          if (loadedFiles.length > 0 && imagensFiles.length < 6) {
-            const currentCount = imagensFiles.length;
-            const maxToAdd = Math.min(loadedFiles.length, 6 - currentCount);
-            
-            if (maxToAdd > 0) {
-              const filesToAdd = loadedFiles.slice(0, maxToAdd);
-              const previewsToAdd = loadedPreviews.slice(0, maxToAdd);
-              
-              // Verificar se já não existem antes de adicionar
-              const newFiles: File[] = [];
-              const newPreviews: string[] = [];
-              
-              filesToAdd.forEach((file, index) => {
-                const preview = previewsToAdd[index];
-                if (!imagensPreview.includes(preview) && !removedImageUrls.has(preview)) {
-                  newFiles.push(file);
-                  newPreviews.push(preview);
-                }
-              });
-              
-              if (newFiles.length > 0) {
-                setImagensFiles((prev) => [...prev, ...newFiles]);
-                setImagensPreview((prev) => [...prev, ...newPreviews]);
-                
-                if (newFiles.length < maxToAdd) {
-                  toast.warning(`Solo se agregaron ${newFiles.length} imagen(es) nuevas`);
-                } else if (imagensFiles.length + newFiles.length >= 6) {
-                  toast.warning(`Se agregaron ${newFiles.length} imagen(es) (límite de 6 alcanzado)`);
-                } else {
-                  toast.success(`${newFiles.length} imagen(es) cargada(s) desde el celular`);
-                }
-                
-                // Limpar imagens temporárias do localStorage após carregar (já estão no servidor)
-                localStorage.removeItem(`temp_images_${uploadToken}`);
-              }
-            }
-          }
-        } else {
-          // Fallback: tentar localStorage
-          const savedImages = localStorage.getItem(`temp_images_${uploadToken}`);
-          if (savedImages) {
-            try {
-              const imagesData = JSON.parse(savedImages);
-              const loadedFiles: File[] = [];
-              const loadedPreviews: string[] = [];
-              
-              for (const imgData of imagesData) {
-                const response = await fetch(imgData.data);
-                const blob = await response.blob();
-                const file = new File([blob], imgData.name, { type: imgData.type });
-                loadedFiles.push(file);
-                loadedPreviews.push(imgData.data);
-              }
-              
-              // Filtrar duplicatas e respeitar limite de 6
-              const currentCount = imagensFiles.length;
-              const filteredPairs: { file: File; preview: string }[] = [];
-              
-              for (let i = 0; i < loadedFiles.length; i++) {
-                const preview = loadedPreviews[i];
-                if (!imagensPreview.includes(preview) && !removedImageUrls.has(preview)) {
-                  filteredPairs.push({ file: loadedFiles[i], preview });
-                }
-              }
-              
-              const maxToAdd = Math.min(filteredPairs.length, 6 - currentCount);
-              
-              if (maxToAdd > 0) {
-                const pairsToAdd = filteredPairs.slice(0, maxToAdd);
-                const filesToAdd = pairsToAdd.map(p => p.file);
-                const previewsToAdd = pairsToAdd.map(p => p.preview);
-                
-                setImagensFiles((prev) => [...prev, ...filesToAdd]);
-                setImagensPreview((prev) => [...prev, ...previewsToAdd]);
-                localStorage.removeItem(`temp_images_${uploadToken}`);
-                toast.success(`${maxToAdd} imagen(es) cargada(s) desde el celular`);
-              }
-            } catch (error) {
-              console.error("Error loading temp images from localStorage:", error);
-            }
-          }
-        }
-      } catch (error) {
-        console.error("Error loading temp images:", error);
-      }
-    };
-    
-    loadTempImages();
-    
-    // Verificar periodicamente se há novas imagens
-    const interval = setInterval(() => {
-      loadTempImages();
-    }, 2000); // Verifica a cada 2 segundos
-    
-    return () => clearInterval(interval);
-  }, [uploadToken, imagensFiles.length, imagensPreview, removedImageUrls]);
 
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
@@ -230,11 +57,6 @@ export default function NewVehiclePage() {
   };
 
   const removeImage = (index: number) => {
-    const removedUrl = imagensPreview[index];
-    // Marcar URL como removida para não buscar novamente
-    if (removedUrl) {
-      setRemovedImageUrls((prev) => new Set(prev).add(removedUrl));
-    }
     setImagensPreview((prev) => prev.filter((_, i) => i !== index));
     setImagensFiles((prev) => prev.filter((_, i) => i !== index));
   };
@@ -278,17 +100,6 @@ export default function NewVehiclePage() {
 
       if (result.success) {
         toast.success("Vehículo creado exitosamente");
-        // Limpar imagens temporárias do servidor
-        if (uploadToken) {
-          try {
-            await fetch(`/api/vehicles/upload-temp?token=${uploadToken}`, {
-              method: "DELETE",
-            });
-          } catch (error) {
-            console.error("Error cleaning temp images:", error);
-          }
-          localStorage.removeItem(`temp_images_${uploadToken}`);
-        }
         router.push(`/vehicles/${result.vehicle.id}`);
       } else {
         toast.error(result.message || "Error al crear vehículo");
@@ -450,20 +261,9 @@ export default function NewVehiclePage() {
             
             {/* Upload de Imagens */}
             <div className="sm:col-span-2 lg:col-span-3">
-              <div className="flex items-center justify-between mb-2">
-                <label className="block text-sm font-medium text-zinc-500">
-                  Imágenes del Vehículo (máximo 6)
-                </label>
-                <Button
-                  onClick={() => setShowQRCode(true)}
-                  variant="outline"
-                  size="sm"
-                  className="bg-white border-black text-black hover:bg-zinc-50"
-                >
-                  <QrCode className="mr-2 h-4 w-4" />
-                  QR para Subir Fotos
-                </Button>
-              </div>
+              <label className="mb-2 block text-sm font-medium text-zinc-500">
+                Imágenes del Vehículo (máximo 6)
+              </label>
               <div className="space-y-4">
                 {imagensPreview.length < 6 && (
                   <div className="flex items-center gap-4">
@@ -539,20 +339,7 @@ export default function NewVehiclePage() {
               <Button
                 type="button"
                 variant="outline"
-                onClick={async () => {
-                  // Limpar imagens temporárias ao cancelar
-                  if (uploadToken) {
-                    try {
-                      await fetch(`/api/vehicles/upload-temp?token=${uploadToken}`, {
-                        method: "DELETE",
-                      });
-                    } catch (error) {
-                      console.error("Error cleaning temp images:", error);
-                    }
-                    localStorage.removeItem(`temp_images_${uploadToken}`);
-                  }
-                  router.push("/vehicles");
-                }}
+                onClick={() => router.push("/vehicles")}
                 className="flex-1"
               >
                 Cancelar
@@ -575,63 +362,6 @@ export default function NewVehiclePage() {
           </form>
         </div>
       </div>
-
-      {/* Dialog do QR Code */}
-      <Dialog open={showQRCode} onOpenChange={setShowQRCode}>
-        <DialogContent className="bg-white">
-          <DialogHeader>
-            <DialogTitle className="text-black">Escanea para Subir Fotos</DialogTitle>
-            <DialogDescription className="text-black">
-              Escanea este código QR con tu celular para subir fotos directamente
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4 py-4">
-            {showIPInput && (
-              <div className="space-y-2">
-                <p className="text-sm text-zinc-600">
-                  Para usar en desarrollo, informe el IP local de su máquina:
-                </p>
-                <Input
-                  type="text"
-                  placeholder="Ex: 192.168.1.100"
-                  value={localIP}
-                  onChange={(e) => {
-                    const ip = e.target.value;
-                    setLocalIP(ip);
-                    if (ip && uploadToken) {
-                      const port = window.location.port || '3000';
-                      const newUrl = `http://${ip}:${port}/vehicles/upload?token=${uploadToken}`;
-                      setUploadUrl(newUrl);
-                      localStorage.setItem('localIP', ip);
-                      setShowIPInput(false);
-                    }
-                  }}
-                  className="border-black text-black"
-                />
-                <p className="text-xs text-zinc-500">
-                  Descubra su IP: Windows (ipconfig) o Mac/Linux (ifconfig)
-                </p>
-              </div>
-            )}
-            {uploadUrl && !uploadUrl.includes('[CONFIGURE-IP]') && (
-              <div className="flex flex-col items-center">
-                <div className="bg-white p-4 rounded-lg border border-zinc-200">
-                  <QRCodeSVG value={uploadUrl} size={256} />
-                </div>
-              </div>
-            )}
-          </div>
-          <DialogFooter>
-            <Button
-              variant="outline"
-              onClick={() => setShowQRCode(false)}
-              className="bg-white border-black text-black hover:bg-zinc-50"
-            >
-              Cerrar
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
     </div>
   );
 }

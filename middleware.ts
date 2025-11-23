@@ -50,7 +50,7 @@ export async function middleware(request: NextRequest) {
     } = await supabase.auth.getUser();
 
     // Rotas que não precisam de autenticação
-    const publicRoutes = ["/login", "/auth/callback", "/vehicles/upload", "/api/vehicles/upload-temp"];
+    const publicRoutes = ["/login", "/auth/callback"];
     const isPublicRoute = publicRoutes.some((route) =>
       request.nextUrl.pathname.startsWith(route)
     );

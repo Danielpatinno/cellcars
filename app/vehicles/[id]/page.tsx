@@ -4,7 +4,7 @@ import { useState, useEffect, useRef } from "react";
 import { useRouter, useParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { ArrowLeft, Edit, Save, X, Trash2, ZoomIn, X as XIcon, DollarSign, MessageCircle, QrCode, Loader2 } from "lucide-react";
+import { ArrowLeft, Edit, Save, X, Trash2, ZoomIn, X as XIcon, DollarSign, MessageCircle, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import {
   getVehicleById,
@@ -22,7 +22,6 @@ import {
 } from "@/components/ui/dialog";
 import { CurrencyInput } from "@/components/ui/currency-input";
 import FormattedDate from "@/components/FormattedDate";
-import { QRCodeSVG } from "qrcode.react";
 import { compressImages } from "@/lib/image-compression";
 
 interface VehicleWithImages extends Vehicle {
@@ -42,10 +41,6 @@ export default function VehicleDetailsPage() {
   const [loading, setLoading] = useState(true);
   const [editing, setEditing] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
-  const [showQRCode, setShowQRCode] = useState(false);
-  const [uploadUrl, setUploadUrl] = useState("");
-  const [showIPInput, setShowIPInput] = useState(false);
-  const [localIP, setLocalIP] = useState("");
 
   // Função para formatar moeda (igual ao CurrencyInput)
   const formatCurrency = (value: number) => {
@@ -106,26 +101,6 @@ export default function VehicleDetailsPage() {
     
     // Inicializar year
     setFormData((prev) => ({ ...prev, year: new Date().getFullYear() }));
-    
-    // Configurar URL de upload
-    if (typeof window !== 'undefined') {
-      const hostname = window.location.hostname;
-      const port = window.location.port || '3000';
-      
-      if (hostname === 'localhost' || hostname === '127.0.0.1') {
-        // Em desenvolvimento, verifica se tem IP salvo
-        const savedIP = localStorage.getItem('localIP');
-        if (savedIP) {
-          setUploadUrl(`http://${savedIP}:${port}/vehicles/${id}/upload`);
-        } else {
-          setShowIPInput(true);
-          setUploadUrl(`http://[CONFIGURE-IP]:${port}/vehicles/${id}/upload`);
-        }
-      } else {
-        // Em produção, usa a URL normal
-        setUploadUrl(`${window.location.origin}/vehicles/${id}/upload`);
-      }
-    }
   }, [id]);
 
   const loadVehicle = async () => {
@@ -384,15 +359,6 @@ export default function VehicleDetailsPage() {
         <div className="bg-white rounded-lg border border-zinc-200 p-6 shadow-sm">
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-xl font-semibold text-black">Imágenes</h2>
-            <Button
-              onClick={() => setShowQRCode(true)}
-              variant="outline"
-              size="sm"
-              className="bg-white border-black text-black hover:bg-zinc-50"
-            >
-              <QrCode className="mr-2 h-4 w-4" />
-              QR para Subir Fotos
-            </Button>
           </div>
           {displayImages.length > 0 ? (
             <div className="space-y-4">
@@ -809,62 +775,6 @@ export default function VehicleDetailsPage() {
         </DialogContent>
       </Dialog>
 
-      {/* Dialog do QR Code */}
-      <Dialog open={showQRCode} onOpenChange={setShowQRCode}>
-        <DialogContent className="bg-white">
-          <DialogHeader>
-            <DialogTitle className="text-black">Escanea para Subir Fotos</DialogTitle>
-            <DialogDescription className="text-black">
-              Escanea este código QR con tu celular para subir fotos directamente
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4 py-4">
-            {showIPInput && (
-              <div className="space-y-2">
-                <p className="text-sm text-zinc-600">
-                  Para usar en desarrollo, informe el IP local de su máquina:
-                </p>
-                <Input
-                  type="text"
-                  placeholder="Ex: 192.168.1.100"
-                  value={localIP}
-                  onChange={(e) => {
-                    const ip = e.target.value;
-                    setLocalIP(ip);
-                    if (ip) {
-                      const port = window.location.port || '3000';
-                      const newUrl = `http://${ip}:${port}/vehicles/${id}/upload`;
-                      setUploadUrl(newUrl);
-                      localStorage.setItem('localIP', ip);
-                      setShowIPInput(false);
-                    }
-                  }}
-                  className="border-black text-black"
-                />
-                <p className="text-xs text-zinc-500">
-                  Descubra su IP: Windows (ipconfig) o Mac/Linux (ifconfig)
-                </p>
-              </div>
-            )}
-            {uploadUrl && !uploadUrl.includes('[CONFIGURE-IP]') && (
-              <div className="flex flex-col items-center">
-                <div className="bg-white p-4 rounded-lg border border-zinc-200">
-                  <QRCodeSVG value={uploadUrl} size={256} />
-                </div>
-              </div>
-            )}
-          </div>
-          <DialogFooter>
-            <Button
-              variant="outline"
-              onClick={() => setShowQRCode(false)}
-              className="bg-white border-black text-black hover:bg-zinc-50"
-            >
-              Cerrar
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
     </div>
   );
 }
