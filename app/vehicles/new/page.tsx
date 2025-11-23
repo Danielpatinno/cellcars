@@ -106,14 +106,43 @@ export default function NewVehiclePage() {
             }
           }
           
-          // Só atualizar se houver novas imagens
-          if (loadedFiles.length > 0) {
-            setImagensFiles((prev) => [...prev, ...loadedFiles]);
-            setImagensPreview((prev) => [...prev, ...loadedPreviews]);
-            toast.success(`${loadedFiles.length} imagen(es) cargada(s) desde el celular`);
+          // Só atualizar se houver novas imagens e não exceder o limite de 6
+          if (loadedFiles.length > 0 && imagensFiles.length < 6) {
+            const currentCount = imagensFiles.length;
+            const maxToAdd = Math.min(loadedFiles.length, 6 - currentCount);
             
-            // Limpar imagens temporárias do localStorage após carregar (já estão no servidor)
-            localStorage.removeItem(`temp_images_${uploadToken}`);
+            if (maxToAdd > 0) {
+              const filesToAdd = loadedFiles.slice(0, maxToAdd);
+              const previewsToAdd = loadedPreviews.slice(0, maxToAdd);
+              
+              // Verificar se já não existem antes de adicionar
+              const newFiles: File[] = [];
+              const newPreviews: string[] = [];
+              
+              filesToAdd.forEach((file, index) => {
+                const preview = previewsToAdd[index];
+                if (!imagensPreview.includes(preview) && !removedImageUrls.has(preview)) {
+                  newFiles.push(file);
+                  newPreviews.push(preview);
+                }
+              });
+              
+              if (newFiles.length > 0) {
+                setImagensFiles((prev) => [...prev, ...newFiles]);
+                setImagensPreview((prev) => [...prev, ...newPreviews]);
+                
+                if (newFiles.length < maxToAdd) {
+                  toast.warning(`Solo se agregaron ${newFiles.length} imagen(es) nuevas`);
+                } else if (imagensFiles.length + newFiles.length >= 6) {
+                  toast.warning(`Se agregaron ${newFiles.length} imagen(es) (límite de 6 alcanzado)`);
+                } else {
+                  toast.success(`${newFiles.length} imagen(es) cargada(s) desde el celular`);
+                }
+                
+                // Limpar imagens temporárias do localStorage após carregar (já estão no servidor)
+                localStorage.removeItem(`temp_images_${uploadToken}`);
+              }
+            }
           }
         } else {
           // Fallback: tentar localStorage
@@ -132,11 +161,28 @@ export default function NewVehiclePage() {
                 loadedPreviews.push(imgData.data);
               }
               
-              if (loadedFiles.length > imagensFiles.length) {
-                setImagensFiles(loadedFiles);
-                setImagensPreview(loadedPreviews);
+              // Filtrar duplicatas e respeitar limite de 6
+              const currentCount = imagensFiles.length;
+              const filteredPairs: { file: File; preview: string }[] = [];
+              
+              for (let i = 0; i < loadedFiles.length; i++) {
+                const preview = loadedPreviews[i];
+                if (!imagensPreview.includes(preview) && !removedImageUrls.has(preview)) {
+                  filteredPairs.push({ file: loadedFiles[i], preview });
+                }
+              }
+              
+              const maxToAdd = Math.min(filteredPairs.length, 6 - currentCount);
+              
+              if (maxToAdd > 0) {
+                const pairsToAdd = filteredPairs.slice(0, maxToAdd);
+                const filesToAdd = pairsToAdd.map(p => p.file);
+                const previewsToAdd = pairsToAdd.map(p => p.preview);
+                
+                setImagensFiles((prev) => [...prev, ...filesToAdd]);
+                setImagensPreview((prev) => [...prev, ...previewsToAdd]);
                 localStorage.removeItem(`temp_images_${uploadToken}`);
-                toast.success(`${loadedFiles.length} imagen(es) cargada(s) desde el celular`);
+                toast.success(`${maxToAdd} imagen(es) cargada(s) desde el celular`);
               }
             } catch (error) {
               console.error("Error loading temp images from localStorage:", error);
@@ -207,8 +253,14 @@ export default function NewVehiclePage() {
       // Comprimir imagens antes de enviar
       let imagesToUpload = imagensFiles;
       if (imagensFiles.length > 0) {
-        toast.info("Comprimiendo imágenes...");
-        imagesToUpload = await compressImages(imagensFiles, 1920, 1920, 0.8);
+        try {
+          toast.info("Comprimiendo imágenes...");
+          imagesToUpload = await compressImages(imagensFiles, 1920, 1920, 0.8);
+        } catch (compressError) {
+          console.error("Error comprimiendo imágenes:", compressError);
+          toast.warning("Error al comprimir algunas imágenes, intentando subir originales...");
+          // Continuar com imagens originais se compressão falhar
+        }
       }
       
       const result = await createVehicle({

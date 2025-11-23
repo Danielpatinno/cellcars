@@ -71,13 +71,20 @@ function VehicleUploadPageContent() {
     setSaving(true);
     try {
       // Comprimir imagens antes de enviar
-      toast.info("Comprimiendo imágenes...");
-      const compressedImages = await compressImages(images, 1920, 1920, 0.8);
+      let imagesToUpload = images;
+      try {
+        toast.info("Comprimiendo imágenes...");
+        imagesToUpload = await compressImages(images, 1920, 1920, 0.8);
+      } catch (compressError) {
+        console.error("Error comprimiendo imágenes:", compressError);
+        toast.warning("Error al comprimir, intentando subir originales...");
+        // Continuar com imagens originais se compressão falhar
+      }
       
       // Criar FormData para enviar ao servidor
       const formData = new FormData();
       formData.append("token", token);
-      compressedImages.forEach((file) => {
+      imagesToUpload.forEach((file) => {
         formData.append("images", file);
       });
 

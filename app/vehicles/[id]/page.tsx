@@ -195,8 +195,14 @@ export default function VehicleDetailsPage() {
       // Comprimir novas imagens antes de enviar
       let imagesToUpload = newImagesFiles;
       if (newImagesFiles.length > 0) {
-        toast.info("Comprimiendo imágenes...");
-        imagesToUpload = await compressImages(newImagesFiles, 1920, 1920, 0.8);
+        try {
+          toast.info("Comprimiendo imágenes...");
+          imagesToUpload = await compressImages(newImagesFiles, 1920, 1920, 0.8);
+        } catch (compressError) {
+          console.error("Error comprimiendo imágenes:", compressError);
+          toast.warning("Error al comprimir algunas imágenes, intentando subir originales...");
+          // Continuar com imagens originais se compressão falhar
+        }
       }
       
       const result = await updateVehicle(id, {
