@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { usePathname } from "next/navigation";
 import { useSidebar } from "../app/contexts/SidebarContext";
 import { Button } from "@/components/ui/button";
@@ -106,13 +107,18 @@ export default function Sidebar() {
               isCollapsed ? "justify-center px-4" : ""
             }`}
           >
-            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-blue-600 text-white shrink-0">
-              <Car className="h-5 w-5" />
+            <div className="flex h-10 w-10 items-center justify-center rounded-lg shrink-0 overflow-hidden">
+              <Image
+                src="/assets/imagens/loco_cell.png"
+                alt="CelleCars Logo"
+                width={40}
+                height={40}
+                className="object-contain"
+              />
             </div>
             {!isCollapsed && (
               <div className="transition-opacity duration-300">
-                <h1 className="text-lg font-bold text-zinc-900">CellCars</h1>
-                <p className="text-xs text-zinc-600">Concesionaria</p>
+                <h1 className="text-lg font-bold text-zinc-900">CelleCars</h1>
               </div>
             )}
           </div>
@@ -204,7 +210,7 @@ export default function Sidebar() {
           {!isCollapsed && (
             <div className="border-t border-zinc-200 px-6 py-4">
               <p className="text-xs text-zinc-500">
-                © 2024 CellCars. Todos los derechos reservados.
+                © 2024 CelleCars. Todos los derechos reservados.
               </p>
             </div>
           )}

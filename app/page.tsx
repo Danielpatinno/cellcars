@@ -100,9 +100,9 @@ export default function Home() {
   return (
     <div className="p-8 bg-white min-h-screen">
       <div className="mb-8">
-        <h1 className="text-3xl font-bold text-zinc-900">Bienvenido a CellCars</h1>
+        <h1 className="text-3xl font-bold text-zinc-900">Bienvenido a CelleCars</h1>
         <p className="text-zinc-600 mt-2">
-          Sistema de gestión para concesionaria
+          Tu sistema de gestión
         </p>
       </div>
 

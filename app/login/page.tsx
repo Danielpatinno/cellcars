@@ -51,7 +51,7 @@ export default function LoginPage() {
       <div className="w-full max-w-md">
         <div className="bg-white rounded-xl shadow-lg p-8">
           <div className="text-center mb-8">
-            <h1 className="text-3xl font-bold text-zinc-900 mb-2">CellCars</h1>
+            <h1 className="text-3xl font-bold text-zinc-900 mb-2">CelleCars</h1>
             <p className="text-zinc-600">Inicie sesión para continuar</p>
           </div>
 

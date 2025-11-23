@@ -15,7 +15,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "CellCars - Sistema de Concesionaria",
+  title: "CelleCars - Sistema de Concesionaria",
   description: "Sistema de gestión para concesionaria",
 };
 
