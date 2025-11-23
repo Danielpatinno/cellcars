@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useEffect, useMemo } from "react";
+import { useState, useRef, useEffect, useMemo, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -12,7 +12,7 @@ interface VehicleWithImages extends Vehicle {
   images?: string[];
 }
 
-export default function VeiculosPage() {
+function VeiculosPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [veiculos, setVeiculos] = useState<VehicleWithImages[]>([]);
@@ -577,3 +577,10 @@ export default function VeiculosPage() {
   );
 }
 
+export default function VeiculosPage() {
+  return (
+    <Suspense fallback={<div className="p-8"><p className="text-zinc-600">Cargando...</p></div>}>
+      <VeiculosPageContent />
+    </Suspense>
+  );
+}

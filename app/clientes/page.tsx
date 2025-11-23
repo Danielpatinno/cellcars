@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -21,7 +21,7 @@ import {
 } from "@/components/ui/dialog";
 import FormattedDate from "@/components/FormattedDate";
 
-export default function ClientesPage() {
+function ClientesPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [clientes, setClientes] = useState<Client[]>([]);
@@ -412,3 +412,10 @@ export default function ClientesPage() {
   );
 }
 
+export default function ClientesPage() {
+  return (
+    <Suspense fallback={<div className="p-8"><p className="text-zinc-600">Cargando...</p></div>}>
+      <ClientesPageContent />
+    </Suspense>
+  );
+}
