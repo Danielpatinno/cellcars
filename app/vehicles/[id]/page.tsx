@@ -23,6 +23,7 @@ import {
 import { CurrencyInput } from "@/components/ui/currency-input";
 import FormattedDate from "@/components/FormattedDate";
 import { QRCodeSVG } from "qrcode.react";
+import { compressImages } from "@/lib/image-compression";
 
 interface VehicleWithImages extends Vehicle {
   images?: string[];
@@ -191,6 +192,13 @@ export default function VehicleDetailsPage() {
   const handleSave = async () => {
     setLoading(true);
     try {
+      // Comprimir novas imagens antes de enviar
+      let imagesToUpload = newImagesFiles;
+      if (newImagesFiles.length > 0) {
+        toast.info("Comprimiendo imágenes...");
+        imagesToUpload = await compressImages(newImagesFiles, 1920, 1920, 0.8);
+      }
+      
       const result = await updateVehicle(id, {
         brand: formData.brand,
         model: formData.model,
@@ -201,7 +209,7 @@ export default function VehicleDetailsPage() {
         plate: formData.plate,
         mileage: formData.mileage,
         status: formData.status,
-        newImages: newImagesFiles,
+        newImages: imagesToUpload,
         imagesToRemove: imagesToRemove,
       });
 
@@ -837,9 +845,6 @@ export default function VehicleDetailsPage() {
                 <div className="bg-white p-4 rounded-lg border border-zinc-200">
                   <QRCodeSVG value={uploadUrl} size={256} />
                 </div>
-                <p className="text-xs text-zinc-500 mt-4 text-center break-all px-4">
-                  {uploadUrl}
-                </p>
               </div>
             )}
           </div>

@@ -7,6 +7,7 @@ import { Car, X, Image as ImageIcon, Upload, Loader2, ArrowLeft, QrCode } from "
 import { createVehicle } from "../actions";
 import { CurrencyInput } from "@/components/ui/currency-input";
 import { toast } from "sonner";
+import { compressImages } from "@/lib/image-compression";
 import { QRCodeSVG } from "qrcode.react";
 import {
   Dialog,
@@ -203,6 +204,13 @@ export default function NewVehiclePage() {
     setLoading(true);
     
     try {
+      // Comprimir imagens antes de enviar
+      let imagesToUpload = imagensFiles;
+      if (imagensFiles.length > 0) {
+        toast.info("Comprimiendo imágenes...");
+        imagesToUpload = await compressImages(imagensFiles, 1920, 1920, 0.8);
+      }
+      
       const result = await createVehicle({
         brand: formData.brand,
         model: formData.model,
@@ -213,7 +221,7 @@ export default function NewVehiclePage() {
         plate: formData.plate,
         mileage: formData.mileage,
         status: formData.status,
-        images: imagensFiles,
+        images: imagesToUpload,
       });
 
       if (result.success) {
@@ -558,9 +566,6 @@ export default function NewVehiclePage() {
                 <div className="bg-white p-4 rounded-lg border border-zinc-200">
                   <QRCodeSVG value={uploadUrl} size={256} />
                 </div>
-                <p className="text-xs text-zinc-500 mt-4 text-center break-all px-4">
-                  {uploadUrl}
-                </p>
               </div>
             )}
           </div>

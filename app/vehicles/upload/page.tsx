@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Camera, Image as ImageIcon, X, Check, ArrowLeft, Loader2 } from "lucide-react";
 import { toast } from "sonner";
+import { compressImages } from "@/lib/image-compression";
 
 function VehicleUploadPageContent() {
   const router = useRouter();
@@ -69,10 +70,14 @@ function VehicleUploadPageContent() {
 
     setSaving(true);
     try {
+      // Comprimir imagens antes de enviar
+      toast.info("Comprimiendo imágenes...");
+      const compressedImages = await compressImages(images, 1920, 1920, 0.8);
+      
       // Criar FormData para enviar ao servidor
       const formData = new FormData();
       formData.append("token", token);
-      images.forEach((file) => {
+      compressedImages.forEach((file) => {
         formData.append("images", file);
       });
 
