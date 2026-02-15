@@ -13,6 +13,7 @@ import {
 import { getVehicles, Vehicle } from "@/app/vehicles/actions";
 import { getClients, Client } from "@/app/clientes/actions";
 import { CurrencyInput } from "@/components/ui/currency-input";
+import { formatCurrency } from "@/lib/currency-utils";
 
 export default function NewSalePage() {
   const router = useRouter();
@@ -20,14 +21,6 @@ export default function NewSalePage() {
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);
   const [clients, setClients] = useState<Client[]>([]);
   
-  // Função para formatar moeda (igual ao CurrencyInput)
-  const formatCurrency = (value: number) => {
-    if (value === 0 || value === null || value === undefined) return "0,00";
-    const formatted = (value / 100).toFixed(2).replace(".", ",");
-    const parts = formatted.split(",");
-    parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ".");
-    return parts.join(",");
-  };
 
   // Função para formatar C.I.N (agrupa de 3 em 3 com pontos)
   const formatCIN = (value: string) => {

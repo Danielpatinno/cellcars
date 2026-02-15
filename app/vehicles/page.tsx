@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Car, Image as ImageIcon, Search, Eye } from "lucide-react";
 import { getVehicles, Vehicle } from "./actions";
 import { TableLoading } from "@/components/ui/table-loading";
+import { formatCurrency } from "@/lib/currency-utils";
 
 interface VehicleWithImages extends Vehicle {
   images?: string[];
@@ -19,14 +20,6 @@ function VeiculosPageContent() {
   const [loading, setLoading] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
 
-  // Função para formatar moeda (igual ao CurrencyInput)
-  const formatCurrency = (value: number) => {
-    if (value === 0 || value === null || value === undefined) return "0,00";
-    const formatted = (value / 100).toFixed(2).replace(".", ",");
-    const parts = formatted.split(",");
-    parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ".");
-    return parts.join(",");
-  };
 
   const getStatusColor = (status: string | null) => {
     switch (status) {

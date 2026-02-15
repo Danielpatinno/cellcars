@@ -23,6 +23,7 @@ import {
 } from "@/components/ui/dialog";
 import FormattedDate from "@/components/FormattedDate";
 import { CurrencyInput } from "@/components/ui/currency-input";
+import { formatCurrency } from "@/lib/currency-utils";
 
 export default function SaleDetailsPage() {
   const router = useRouter();
@@ -117,14 +118,6 @@ export default function SaleDetailsPage() {
     }
   };
 
-  // Função para formatar moeda (igual ao CurrencyInput)
-  const formatCurrency = (value: number) => {
-    if (value === 0 || value === null || value === undefined) return "0,00";
-    const formatted = (value / 100).toFixed(2).replace(".", ",");
-    const parts = formatted.split(",");
-    parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ".");
-    return parts.join(",");
-  };
 
   const isOverdue = (dueDate: string) => {
     return new Date(dueDate) < new Date() && !sale?.installments?.find((inst: Installment) => inst.due_date === dueDate)?.payment_date;

@@ -18,3 +18,4 @@ export function TableLoading({ colSpan, message = "Cargando..." }: TableLoadingP
   );
 }
 
+

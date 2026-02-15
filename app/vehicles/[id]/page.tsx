@@ -23,6 +23,8 @@ import {
 import { CurrencyInput } from "@/components/ui/currency-input";
 import FormattedDate from "@/components/FormattedDate";
 import { compressImages } from "@/lib/image-compression";
+import { formatCurrency } from "@/lib/currency-utils";
+import { useWhatsApp } from "@/hooks/useWhatsApp";
 
 interface VehicleWithImages extends Vehicle {
   images?: string[];
@@ -41,40 +43,7 @@ export default function VehicleDetailsPage() {
   const [loading, setLoading] = useState(true);
   const [editing, setEditing] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
-
-  // Função para formatar moeda (igual ao CurrencyInput)
-  const formatCurrency = (value: number) => {
-    if (value === 0 || value === null || value === undefined) return "0,00";
-    const formatted = (value / 100).toFixed(2).replace(".", ",");
-    const parts = formatted.split(",");
-    parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ".");
-    return parts.join(",");
-  };
-
-  // Função para abrir WhatsApp
-  const openWhatsApp = (phone: string) => {
-    try {
-      // Remove formatação e espaços
-      const cleanPhone = phone.replace(/\D/g, "");
-      if (!cleanPhone) {
-        toast.error("Número de telefone inválido");
-        return;
-      }
-      // Adiciona código do Paraguai se não tiver
-      const phoneWithCode = cleanPhone.startsWith("595") ? cleanPhone : `595${cleanPhone}`;
-      // Mensagem padrão
-      const message = encodeURIComponent("Hola");
-      // Abre WhatsApp em nova aba
-      const whatsappUrl = `https://wa.me/${phoneWithCode}?text=${message}`;
-      const newWindow = window.open(whatsappUrl, "_blank", "noopener,noreferrer");
-      if (!newWindow) {
-        toast.error("Por favor, permita pop-ups para abrir o WhatsApp");
-      }
-    } catch (error) {
-      console.error("Error opening WhatsApp:", error);
-      toast.error("Error al abrir WhatsApp");
-    }
-  };
+  const { openWhatsApp } = useWhatsApp();
 
   const [showZoomImage, setShowZoomImage] = useState(false);
   const [zoomedImageUrl, setZoomedImageUrl] = useState("");
