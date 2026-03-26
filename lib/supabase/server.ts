@@ -1,50 +1,41 @@
 import { createServerClient } from "@supabase/ssr";
+import { createClient as createSupabaseClient } from "@supabase/supabase-js";
 import { cookies } from "next/headers";
 
-// Para autenticação (usa ANON_KEY)
-export const createServer = async () => {
+import { getSupabasePublicKey, getSupabaseUrl } from "./env";
+
+/** Cliente com sessão do utilizador (Server Components, Server Actions com cookies) */
+export async function createClient() {
   const cookieStore = await cookies();
 
-  return createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    {
-      cookies: {
-        get(name: string) {
-          return cookieStore.get(name)?.value;
-        },
-        set(name: string, value: string, options: any) {
-          try {
-            cookieStore.set(name, value, options);
-          } catch (error) {
-            // Cookie já foi definido
-          }
-        },
-        remove(name: string, options: any) {
-          try {
-            cookieStore.delete({ name, ...options });
-          } catch (error) {
-            // Cookie não existe
-          }
-        },
+  return createServerClient(getSupabaseUrl(), getSupabasePublicKey(), {
+    cookies: {
+      getAll() {
+        return cookieStore.getAll();
       },
-    }
-  );
-};
-
-// Para operações de banco de dados que precisam bypassar RLS (usa SERVICE_ROLE_KEY)
-export const createServerAdmin = async () => {
-  const cookieStore = await cookies();
-
-  return createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!,
-    {
-      cookies: {
-        get(name: string) {
-          return cookieStore.get(name)?.value;
-        },
+      setAll(cookiesToSet) {
+        try {
+          cookiesToSet.forEach(({ name, value, options }) =>
+            cookieStore.set(name, value, options),
+          );
+        } catch {
+          // setAll pode ser chamado desde um Server Component; o middleware renova a sessão.
+        }
       },
-    }
-  );
-};
+    },
+  });
+}
+
+/** Operações que ignoram RLS (apenas no servidor; nunca expor ao browser) */
+export function createServerAdmin() {
+  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!serviceKey) {
+    throw new Error("Defina SUPABASE_SERVICE_ROLE_KEY para createServerAdmin");
+  }
+  return createSupabaseClient(getSupabaseUrl(), serviceKey, {
+    auth: {
+      autoRefreshToken: false,
+      persistSession: false,
+    },
+  });
+}
