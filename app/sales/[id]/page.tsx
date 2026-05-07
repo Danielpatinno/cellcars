@@ -1,18 +1,12 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter, useParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ArrowLeft, Plus, X, Check, Calendar } from "lucide-react";
 import { toast } from "sonner";
-import {
-  getSaleById,
-  addInstallment,
-  markInstallmentAsPaid,
-  Sale,
-  Installment,
-} from "../actions";
+import { type Installment } from "../actions";
 import {
   Dialog,
   DialogContent,
@@ -24,13 +18,18 @@ import {
 import FormattedDate from "@/components/FormattedDate";
 import { CurrencyInput } from "@/components/ui/currency-input";
 import { formatCurrency } from "@/lib/currency-utils";
+import { useSale } from "@/hooks/sales/useSale";
+import { useAddInstallment, useMarkInstallmentPaid } from "@/hooks/sales/useSaleMutations";
 
 export default function SaleDetailsPage() {
   const router = useRouter();
   const params = useParams();
   const id = parseInt(params.id as string);
-  const [sale, setSale] = useState<any>(null);
-  const [loading, setLoading] = useState(true);
+  const saleQuery = useSale(Number.isFinite(id) ? id : null);
+  const addInstallmentMutation = useAddInstallment();
+  const markPaidMutation = useMarkInstallmentPaid();
+  const sale = saleQuery.data ?? null;
+  const loading = saleQuery.isLoading || addInstallmentMutation.isPending || markPaidMutation.isPending;
   const [showAddInstallment, setShowAddInstallment] = useState(false);
   const [showMarkAsPaid, setShowMarkAsPaid] = useState(false);
   const [selectedInstallmentId, setSelectedInstallmentId] = useState<number | null>(null);
@@ -43,24 +42,10 @@ export default function SaleDetailsPage() {
   const [paymentNotes, setPaymentNotes] = useState("");
 
   useEffect(() => {
-    loadSale();
-    
     // Inicializar paymentDate com data atual
     const today = new Date().toISOString().split("T")[0];
     setPaymentDate(today);
   }, [id]);
-
-  const loadSale = async () => {
-    setLoading(true);
-    try {
-      const data = await getSaleById(id);
-      setSale(data);
-    } catch (error) {
-      console.error("Error loading sale:", error);
-    } finally {
-      setLoading(false);
-    }
-  };
 
   const handleAddInstallment = async () => {
     if (!newInstallment.receipt_number || newInstallment.amount === 0 || !newInstallment.due_date) {
@@ -68,26 +53,17 @@ export default function SaleDetailsPage() {
       return;
     }
 
-    setLoading(true);
     try {
-      const result = await addInstallment(id, newInstallment);
-      if (result.success) {
-        toast.success("Recibo agregado exitosamente");
-        setShowAddInstallment(false);
-        setNewInstallment({
-          receipt_number: "",
-          amount: 0,
-          due_date: "",
-        });
-        loadSale();
-      } else {
-        toast.error(result.message || "Error al agregar recibo");
-      }
+      await addInstallmentMutation.mutateAsync({ saleId: id, input: newInstallment });
+      toast.success("Recibo agregado exitosamente");
+      setShowAddInstallment(false);
+      setNewInstallment({
+        receipt_number: "",
+        amount: 0,
+        due_date: "",
+      });
     } catch (error: any) {
-      console.error("Error adding installment:", error);
       toast.error("Error al agregar recibo: " + (error.message || "Error desconocido"));
-    } finally {
-      setLoading(false);
     }
   };
 
@@ -97,24 +73,18 @@ export default function SaleDetailsPage() {
       return;
     }
 
-    setLoading(true);
     try {
-      const result = await markInstallmentAsPaid(selectedInstallmentId, paymentDate, paymentNotes || null);
-      if (result.success) {
-        toast.success("Recibo marcado como pagado exitosamente");
-        setShowMarkAsPaid(false);
-        setSelectedInstallmentId(null);
-        setPaymentDate("");
-        setPaymentNotes("");
-        loadSale();
-      } else {
-        toast.error(result.message || "Error al marcar como pagado");
-      }
+      await markPaidMutation.mutateAsync({
+        installmentId: selectedInstallmentId,
+        input: { paymentDate, notes: paymentNotes || null },
+      });
+      toast.success("Recibo marcado como pagado exitosamente");
+      setShowMarkAsPaid(false);
+      setSelectedInstallmentId(null);
+      setPaymentDate("");
+      setPaymentNotes("");
     } catch (error: any) {
-      console.error("Error marking as paid:", error);
       toast.error("Error al marcar como pagado: " + (error.message || "Error desconocido"));
-    } finally {
-      setLoading(false);
     }
   };
 
@@ -123,11 +93,11 @@ export default function SaleDetailsPage() {
     return new Date(dueDate) < new Date() && !sale?.installments?.find((inst: Installment) => inst.due_date === dueDate)?.payment_date;
   };
 
-  const calculateProfitMargin = () => {
-    if (!sale?.vehicle || sale.vehicle.cost_price === 0) return 0;
+  const calculateProfitMargin = useMemo(() => {
+    if (!sale?.vehicle || sale.vehicle.cost_price === 0) return "0.00";
     const profit = sale.vehicle.price - sale.vehicle.cost_price;
     return ((profit / sale.vehicle.cost_price) * 100).toFixed(2);
-  };
+  }, [sale?.vehicle]);
 
   if (loading && !sale) {
     return (
@@ -141,7 +111,11 @@ export default function SaleDetailsPage() {
     return (
       <div className="p-8">
         <p className="text-zinc-600">Venta no encontrada</p>
-        <Button onClick={() => router.push("/sales")} className="mt-4">
+        <Button
+          onClick={() => router.push("/sales")}
+          className="mt-4 bg-white border-zinc-200 text-zinc-900 hover:bg-zinc-50"
+          variant="outline"
+        >
           Volver
         </Button>
       </div>
@@ -151,7 +125,11 @@ export default function SaleDetailsPage() {
   return (
     <div className="p-8">
       <div className="mb-6 flex items-center gap-4">
-        <Button variant="outline" onClick={() => router.push("/sales")}>
+        <Button
+          variant="outline"
+          onClick={() => router.push("/sales")}
+          className="bg-white border-zinc-200 text-zinc-900 hover:bg-zinc-50"
+        >
           <ArrowLeft className="mr-2 h-4 w-4" />
           Volver
         </Button>
@@ -197,7 +175,7 @@ export default function SaleDetailsPage() {
               <div>
                 <label className="text-sm font-medium text-zinc-500">Margen de Lucro</label>
                 <p className="mt-1 text-lg font-semibold text-blue-600">
-                  {calculateProfitMargin()}%
+                  {calculateProfitMargin}%
                 </p>
               </div>
             )}
@@ -230,7 +208,11 @@ export default function SaleDetailsPage() {
         <div className="bg-white rounded-lg border border-zinc-200 p-6 shadow-sm">
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-xl font-semibold text-black">Recibos/Cuotas</h2>
-            <Button onClick={() => setShowAddInstallment(true)} variant="outline">
+            <Button
+              onClick={() => setShowAddInstallment(true)}
+              variant="outline"
+              className="bg-white border-zinc-200 text-zinc-900 hover:bg-zinc-50"
+            >
               <Plus className="mr-2 h-4 w-4" />
               Agregar Recibo
             </Button>
@@ -321,6 +303,7 @@ export default function SaleDetailsPage() {
                                 setSelectedInstallmentId(inst.id);
                                 setShowMarkAsPaid(true);
                               }}
+                              className="bg-white border-zinc-200 text-zinc-900 hover:bg-zinc-50"
                             >
                               <Check className="mr-2 h-4 w-4" />
                               Marcar como Pago
@@ -391,10 +374,20 @@ export default function SaleDetailsPage() {
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setShowAddInstallment(false)}>
+            <Button
+              variant="outline"
+              onClick={() => setShowAddInstallment(false)}
+              className="bg-white border-zinc-200 text-zinc-900 hover:bg-zinc-50"
+            >
               Cancelar
             </Button>
-            <Button onClick={handleAddInstallment} variant="outline" className="bg-white border-black text-black hover:bg-zinc-50">Agregar</Button>
+            <Button
+              onClick={handleAddInstallment}
+              className="bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-60"
+              disabled={loading}
+            >
+              Agregar
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -434,13 +427,23 @@ export default function SaleDetailsPage() {
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => {
-              setShowMarkAsPaid(false);
-              setPaymentNotes("");
-            }} className="bg-white border-black text-black hover:bg-zinc-50">
+            <Button
+              variant="outline"
+              onClick={() => {
+                setShowMarkAsPaid(false);
+                setPaymentNotes("");
+              }}
+              className="bg-white border-zinc-200 text-zinc-900 hover:bg-zinc-50"
+            >
               Cancelar
             </Button>
-            <Button onClick={handleMarkAsPaid} variant="outline" className="bg-white border-black text-black hover:bg-zinc-50">Confirmar Pago</Button>
+            <Button
+              onClick={handleMarkAsPaid}
+              className="bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-60"
+              disabled={loading}
+            >
+              Confirmar Pago
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

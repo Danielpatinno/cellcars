@@ -11,11 +11,13 @@ export default function MainContent({
 
   return (
     <main
-      className={`flex-1 transition-all duration-300 bg-white min-h-screen ${
+      className={`flex-1 min-h-screen transition-all duration-300 bg-white text-zinc-900 overflow-x-hidden ${
         isCollapsed ? "ml-20" : "ml-64"
       }`}
     >
-      {children}
+      <div className="mx-auto w-full max-w-[1600px] p-6 lg:p-8">
+        {children}
+      </div>
     </main>
   );
 }

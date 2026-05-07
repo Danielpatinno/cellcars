@@ -185,7 +185,11 @@ export default function NewSalePage() {
   return (
     <div className="p-8">
       <div className="mb-6 flex items-center gap-4">
-        <Button variant="outline" onClick={() => router.push("/sales")}>
+        <Button
+          variant="outline"
+          onClick={() => router.push("/sales")}
+          className="bg-white border-zinc-200 text-zinc-900 hover:bg-zinc-50"
+        >
           <ArrowLeft className="mr-2 h-4 w-4" />
           Volver
         </Button>
@@ -409,6 +413,7 @@ export default function NewSalePage() {
             type="button"
             variant="outline"
             onClick={() => router.push("/sales")}
+            className="bg-white border-zinc-200 text-zinc-900 hover:bg-zinc-50"
           >
             Cancelar
           </Button>

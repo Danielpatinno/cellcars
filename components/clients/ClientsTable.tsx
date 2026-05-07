@@ -8,12 +8,13 @@ interface ClientsTableProps {
   clients: Client[];
   loading: boolean;
   onDeleteClick: (cliente: Client) => void;
+  onEditClick?: (cliente: Client) => void;
 }
 
-export default function ClientsTable({ clients, loading, onDeleteClick }: ClientsTableProps) {
+export default function ClientsTable({ clients, loading, onDeleteClick, onEditClick }: ClientsTableProps) {
   if (loading && !clients.length) {
     return (
-      <div className="bg-white rounded-lg border border-zinc-200 overflow-hidden">
+      <div className="bg-white/80 backdrop-blur rounded-2xl border border-zinc-200/70 overflow-hidden shadow-sm">
         <div className="overflow-x-auto">
           <table className="w-full">
             <thead className="bg-zinc-50 border-b border-zinc-200">
@@ -51,7 +52,7 @@ export default function ClientsTable({ clients, loading, onDeleteClick }: Client
   }
 
   return (
-    <div className="bg-white rounded-lg border border-zinc-200 overflow-hidden">
+    <div className="bg-white/80 backdrop-blur rounded-2xl border border-zinc-200/70 overflow-hidden shadow-sm">
       <div className="overflow-x-auto">
         <table className="w-full">
           <thead className="bg-zinc-50 border-b border-zinc-200">
@@ -85,6 +86,7 @@ export default function ClientsTable({ clients, loading, onDeleteClick }: Client
                 key={cliente.id}
                 cliente={cliente}
                 onDeleteClick={onDeleteClick}
+                onEditClick={onEditClick}
               />
             ))}
           </tbody>

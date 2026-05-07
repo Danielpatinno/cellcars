@@ -11,52 +11,24 @@ import {
   Plus,
   Loader2,
 } from "lucide-react";
-import { getVehiclesCount } from "./vehicles/actions";
-import { getClientsCount } from "./clientes/actions";
-import {
-  getPendingInstallmentsCount,
-  getSalesCountThisMonth,
-} from "./sales/actions";
 import { useAuth } from "./hooks/useAuth";
+import { useDashboardStats } from "@/hooks/dashboard/useDashboardStats";
 
 export default function Home() {
   const router = useRouter();
   const { user } = useAuth();
-  const [vehiclesCount, setVehiclesCount] = useState(0);
-  const [clientsCount, setClientsCount] = useState(0);
-  const [pendingCount, setPendingCount] = useState(0);
-  const [salesCount, setSalesCount] = useState(0);
-  const [loading, setLoading] = useState(true);
+  const statsQuery = useDashboardStats();
+  const loading = statsQuery.isLoading;
+  const vehiclesCount = statsQuery.data?.vehiclesCount ?? 0;
+  const clientsCount = statsQuery.data?.clientsCount ?? 0;
+  const pendingCount = statsQuery.data?.pendingCount ?? 0;
+  const salesCount = statsQuery.data?.salesCount ?? 0;
 
   // Extrair nome do usuário do email (parte antes do @)
   const getUserName = () => {
     if (!user?.email) return "Usuario";
     const emailParts = user.email.split("@");
     return emailParts[0].charAt(0).toUpperCase() + emailParts[0].slice(1);
-  };
-
-  useEffect(() => {
-    loadCounts();
-  }, []);
-
-  const loadCounts = async () => {
-    setLoading(true);
-    try {
-      const [vehicles, clients, pending, sales] = await Promise.all([
-        getVehiclesCount(),
-        getClientsCount(),
-        getPendingInstallmentsCount(),
-        getSalesCountThisMonth(),
-      ]);
-      setVehiclesCount(vehicles);
-      setClientsCount(clients);
-      setPendingCount(pending);
-      setSalesCount(sales);
-    } catch (error) {
-      console.error("Error loading counts:", error);
-    } finally {
-      setLoading(false);
-    }
   };
 
   const stats = [
@@ -140,17 +112,22 @@ export default function Home() {
       <div className="bg-white rounded-lg border border-zinc-200 p-6 shadow-sm">
         <h2 className="text-xl font-semibold mb-4 text-black">Acciones Rápidas</h2>
         <div className="flex flex-wrap gap-4">
-          <Button onClick={() => router.push("/vehicles/new")} variant="outline" className="bg-white border-black text-black hover:bg-zinc-50">
+          <Button
+            onClick={() => router.push("/vehicles/new")}
+            variant="outline"
+            className="bg-white border-zinc-200 text-zinc-900 hover:bg-zinc-50"
+          >
             <Plus className="mr-2 h-4 w-4" />
             Agregar Vehículo
           </Button>
-          <Button onClick={() => router.push("/clientes/new")} variant="outline" className="bg-white border-black text-black hover:bg-zinc-50">
+          <Button onClick={() => router.push("/clientes")} variant="outline" className="bg-white border-zinc-200 text-zinc-900 hover:bg-zinc-50">
             <Plus className="mr-2 h-4 w-4" />
             Nuevo Cliente
           </Button>
           <Button
             variant="outline"
             onClick={() => router.push("/sales/new")}
+            className="bg-white border-zinc-200 text-zinc-900 hover:bg-zinc-50"
           >
             <DollarSign className="mr-2 h-4 w-4" />
             Nueva Venta
@@ -158,6 +135,7 @@ export default function Home() {
           <Button
             variant="outline"
             onClick={() => router.push("/pendencias")}
+            className="bg-white border-zinc-200 text-zinc-900 hover:bg-zinc-50"
           >
             <AlertTriangle className="mr-2 h-4 w-4" />
             Ver Pendientes

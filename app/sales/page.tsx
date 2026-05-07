@@ -1,36 +1,22 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { DollarSign, Plus, Search, Calendar, Eye } from "lucide-react";
-import { getSales, Sale } from "./actions";
+import { type Sale } from "./actions";
 import FormattedDate from "@/components/FormattedDate";
 import { TableLoading } from "@/components/ui/table-loading";
 import { formatCurrency } from "@/lib/currency-utils";
+import { useSales } from "@/hooks/sales/useSales";
 
 export default function SalesPage() {
   const router = useRouter();
-  const [sales, setSales] = useState<Sale[]>([]);
-  const [loading, setLoading] = useState(true);
+  const salesQuery = useSales();
+  const sales = (salesQuery.data || []) as Sale[];
+  const loading = salesQuery.isLoading;
   const [searchTerm, setSearchTerm] = useState("");
-
-  useEffect(() => {
-    loadSales();
-  }, []);
-
-  const loadSales = async () => {
-    setLoading(true);
-    try {
-      const data = await getSales();
-      setSales(data);
-    } catch (error) {
-      console.error("Error loading sales:", error);
-    } finally {
-      setLoading(false);
-    }
-  };
 
   const filteredSales = useMemo(() => {
     if (!searchTerm) return sales;
@@ -47,35 +33,39 @@ export default function SalesPage() {
 
 
   return (
-    <div className="p-8">
-      <div className="mb-6 flex items-center justify-between">
+    <div className="space-y-6">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
         <div>
-          <h1 className="text-3xl font-bold text-zinc-900">Ventas</h1>
-          <p className="text-zinc-600 mt-1">Gestión de ventas</p>
+          <h1 className="text-3xl font-semibold tracking-tight text-zinc-900">
+            Ventas
+          </h1>
+          <p className="mt-1 text-sm text-zinc-600">Gestión de ventas</p>
         </div>
-        <Button onClick={() => router.push("/sales/new")} variant="outline" className="bg-white border-black text-black hover:bg-zinc-50">
+        <Button
+          onClick={() => router.push("/sales/new")}
+          variant="default"
+          className="bg-blue-600 text-white border border-blue-600 hover:bg-blue-700"
+        >
           <Plus className="mr-2 h-4 w-4" />
           Nueva Venta
         </Button>
       </div>
 
       {/* Barra de búsqueda */}
-      <div className="mb-6">
-        <div className="relative max-w-md">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-zinc-400" />
-          <Input
-            type="text"
-            placeholder="Buscar por cliente, vehículo o método de pago..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="pl-10"
-          />
-        </div>
+      <div className="relative max-w-md">
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-zinc-400" />
+        <Input
+          type="text"
+          placeholder="Buscar por cliente, vehículo o método de pago..."
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
+          className="pl-10 bg-white/80"
+        />
       </div>
 
       {/* Lista de vendas */}
       {loading ? (
-        <div className="bg-white rounded-lg border border-zinc-200 overflow-hidden">
+        <div className="bg-white/80 backdrop-blur rounded-2xl border border-zinc-200/70 overflow-hidden shadow-sm">
           <div className="overflow-x-auto">
             <table className="w-full">
               <thead className="bg-zinc-50 border-b border-zinc-200">
@@ -110,7 +100,7 @@ export default function SalesPage() {
           </div>
         </div>
       ) : filteredSales.length === 0 ? (
-        <div className="text-center py-12 bg-white rounded-lg border border-zinc-200">
+        <div className="text-center py-12 bg-white/80 backdrop-blur rounded-2xl border border-zinc-200/70 shadow-sm">
           <DollarSign className="mx-auto h-12 w-12 text-zinc-400 mb-4" />
           <p className="text-zinc-600">
             {searchTerm
@@ -119,7 +109,7 @@ export default function SalesPage() {
           </p>
         </div>
       ) : (
-        <div className="bg-white rounded-lg border border-zinc-200 overflow-hidden">
+        <div className="bg-white/80 backdrop-blur rounded-2xl border border-zinc-200/70 overflow-hidden shadow-sm">
           <div className="overflow-x-auto">
             <table className="w-full">
               <thead className="bg-zinc-50 border-b border-zinc-200">
@@ -207,7 +197,7 @@ export default function SalesPage() {
                           e.stopPropagation();
                           router.push(`/sales/${sale.id}`);
                         }}
-                        className="bg-white border-black text-black hover:bg-zinc-50"
+                        className="bg-white border-zinc-200 text-zinc-900 hover:bg-zinc-50"
                       >
                         <Eye className="mr-2 h-4 w-4" />
                         Ver Detalles

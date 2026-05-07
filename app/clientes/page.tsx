@@ -1,36 +1,28 @@
 "use client";
 
-import { useState, useEffect, useMemo, Suspense } from "react";
+import { useMemo, Suspense, useState } from "react";
 import { toast } from "sonner";
-import { getClients, deleteClient, Client } from "./actions";
+import { type Client } from "./actions";
 import ClientsPageHeader from "@/components/clients/ClientsPageHeader";
 import ClientsSearchBar from "@/components/clients/ClientsSearchBar";
 import ClientsTable from "@/components/clients/ClientsTable";
 import ClientsEmptyState from "@/components/clients/ClientsEmptyState";
 import DeleteClientDialog from "@/components/clients/DeleteClientDialog";
+import ClientUpsertDialog from "@/components/clients/ClientUpsertDialog";
+import { useClients } from "@/hooks/clients/useClients";
+import { useDeleteClient } from "@/hooks/clients/useClientMutations";
 
 function ClientesPageContent() {
-  const [clientes, setClientes] = useState<Client[]>([]);
-  const [loading, setLoading] = useState(false);
+  const clientsQuery = useClients();
+  const deleteMutation = useDeleteClient();
+
+  const clientes = clientsQuery.data ?? [];
+  const loading = clientsQuery.isLoading || deleteMutation.isPending;
   const [searchTerm, setSearchTerm] = useState("");
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [clientToDelete, setClientToDelete] = useState<Client | null>(null);
-
-  useEffect(() => {
-    loadClientes();
-  }, []);
-
-  const loadClientes = async () => {
-    setLoading(true);
-    try {
-      const data = await getClients();
-      setClientes(data);
-    } catch (error) {
-      console.error("Error loading clients:", error);
-    } finally {
-      setLoading(false);
-    }
-  };
+  const [showUpsertDialog, setShowUpsertDialog] = useState(false);
+  const [clientToEdit, setClientToEdit] = useState<Client | null>(null);
 
   const filteredClients = useMemo(() => {
     if (!searchTerm) return clientes;
@@ -53,28 +45,29 @@ function ClientesPageContent() {
   const handleDelete = async () => {
     if (!clientToDelete) return;
 
-    setLoading(true);
     try {
-      const result = await deleteClient(clientToDelete.id);
-      if (result.success) {
-        toast.success("Cliente eliminado exitosamente");
-        setShowDeleteDialog(false);
-        setClientToDelete(null);
-        loadClientes();
-      } else {
-        toast.error(result.message || "Error al eliminar cliente");
-      }
+      await deleteMutation.mutateAsync(clientToDelete.id);
+      toast.success("Cliente eliminado exitosamente");
+      setShowDeleteDialog(false);
+      setClientToDelete(null);
     } catch (error: any) {
-      console.error("Error deleting client:", error);
       toast.error("Error al eliminar cliente: " + (error.message || "Error desconocido"));
-    } finally {
-      setLoading(false);
     }
   };
 
+  const handleNewClient = () => {
+    setClientToEdit(null);
+    setShowUpsertDialog(true);
+  };
+
+  const handleEditClient = (cliente: Client) => {
+    setClientToEdit(cliente);
+    setShowUpsertDialog(true);
+  };
+
   return (
-    <div className="p-8">
-      <ClientsPageHeader />
+    <div className="space-y-6">
+      <ClientsPageHeader onNewClient={handleNewClient} />
 
       <ClientsSearchBar 
         searchTerm={searchTerm} 
@@ -88,6 +81,7 @@ function ClientesPageContent() {
           clients={filteredClients} 
           loading={loading} 
           onDeleteClick={handleDeleteClick}
+          onEditClick={handleEditClient}
         />
       )}
 
@@ -98,13 +92,20 @@ function ClientesPageContent() {
         onConfirm={handleDelete}
         loading={loading}
       />
+
+      <ClientUpsertDialog
+        open={showUpsertDialog}
+        onOpenChange={setShowUpsertDialog}
+        client={clientToEdit}
+        onSaved={() => {}}
+      />
     </div>
   );
 }
 
 export default function ClientesPage() {
   return (
-    <Suspense fallback={<div className="p-8"><p className="text-zinc-600">Cargando...</p></div>}>
+    <Suspense fallback={<div><p className="text-zinc-600">Cargando...</p></div>}>
       <ClientesPageContent />
     </Suspense>
   );

@@ -1,17 +1,13 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { AlertTriangle, Search, Check, Calendar } from "lucide-react";
 import { toast } from "sonner";
 import { TableLoading } from "@/components/ui/table-loading";
-import {
-  getPendingInstallments,
-  markInstallmentAsPaid,
-  getPendingInstallmentsCount,
-  Installment,
-} from "../sales/actions";
+import { usePendencias } from "@/hooks/pendencias/usePendencias";
+import { useMarkInstallmentPaid } from "@/hooks/sales/useSaleMutations";
 import {
   Dialog,
   DialogContent,
@@ -25,8 +21,10 @@ import { CurrencyInput } from "@/components/ui/currency-input";
 import { formatCurrency } from "@/lib/currency-utils";
 
 export default function PendenciasPage() {
-  const [installments, setInstallments] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
+  const pendenciasQuery = usePendencias();
+  const markPaidMutation = useMarkInstallmentPaid();
+  const installments = pendenciasQuery.data || [];
+  const loading = pendenciasQuery.isLoading || markPaidMutation.isPending;
   const [filter, setFilter] = useState<"all" | "pending" | "overdue">("all");
   const [searchTerm, setSearchTerm] = useState("");
   const [showMarkAsPaidDialog, setShowMarkAsPaidDialog] = useState(false);
@@ -35,31 +33,10 @@ export default function PendenciasPage() {
   const [paymentNotes, setPaymentNotes] = useState("");
 
   useEffect(() => {
-    loadInstallments();
-    
     // Inicializar paymentDate com data atual
     const today = new Date().toISOString().split("T")[0];
     setPaymentDate(today);
   }, []);
-
-  const loadInstallments = async () => {
-    setLoading(true);
-    try {
-      const data = await getPendingInstallments();
-      // Atualizar status para "vencido" se a data de vencimento passou
-      const updated = data.map((inst: any) => {
-        if (new Date(inst.due_date) < new Date() && inst.status === "pendiente") {
-          return { ...inst, status: "vencido" };
-        }
-        return inst;
-      });
-      setInstallments(updated);
-    } catch (error) {
-      console.error("Error loading installments:", error);
-    } finally {
-      setLoading(false);
-    }
-  };
 
   const handleMarkAsPaid = async () => {
     if (!selectedInstallmentId || !paymentDate) {
@@ -67,29 +44,21 @@ export default function PendenciasPage() {
       return;
     }
 
-    setLoading(true);
     try {
-      const result = await markInstallmentAsPaid(selectedInstallmentId, paymentDate, paymentNotes || null);
-      if (result.success) {
-        toast.success("Recibo marcado como pagado exitosamente");
-        setShowMarkAsPaidDialog(false);
-        setSelectedInstallmentId(null);
-        setPaymentNotes("");
-        loadInstallments();
-      } else {
-        toast.error(result.message || "Error al marcar como pagado");
-      }
+      await markPaidMutation.mutateAsync({
+        installmentId: selectedInstallmentId,
+        input: { paymentDate, notes: paymentNotes || null },
+      });
+      toast.success("Recibo marcado como pagado exitosamente");
+      setShowMarkAsPaidDialog(false);
+      setSelectedInstallmentId(null);
+      setPaymentNotes("");
     } catch (error: any) {
-      console.error("Error marking as paid:", error);
       toast.error("Error al marcar como pagado: " + (error.message || "Error desconocido"));
-    } finally {
-      setLoading(false);
     }
   };
 
-  const isOverdue = (dueDate: string) => {
-    return new Date(dueDate) < new Date();
-  };
+  const isOverdue = (dueDate: string) => new Date(dueDate) < new Date();
 
   const filteredInstallments = useMemo(() => {
     let filtered = installments;
@@ -168,23 +137,38 @@ export default function PendenciasPage() {
       <div className="mb-6 flex flex-col md:flex-row gap-4">
         <div className="flex gap-2">
           <Button
-            variant={filter === "all" ? "default" : "outline"}
+            variant="outline"
             onClick={() => setFilter("all")}
             size="sm"
+            className={
+              filter === "all"
+                ? "bg-blue-600 border-blue-600 text-white hover:bg-blue-700"
+                : "bg-white border-zinc-200 text-zinc-900 hover:bg-zinc-50"
+            }
           >
             Todos
           </Button>
           <Button
-            variant={filter === "pending" ? "default" : "outline"}
+            variant="outline"
             onClick={() => setFilter("pending")}
             size="sm"
+            className={
+              filter === "pending"
+                ? "bg-blue-600 border-blue-600 text-white hover:bg-blue-700"
+                : "bg-white border-zinc-200 text-zinc-900 hover:bg-zinc-50"
+            }
           >
             Pendientes
           </Button>
           <Button
-            variant={filter === "overdue" ? "default" : "outline"}
+            variant="outline"
             onClick={() => setFilter("overdue")}
             size="sm"
+            className={
+              filter === "overdue"
+                ? "bg-blue-600 border-blue-600 text-white hover:bg-blue-700"
+                : "bg-white border-zinc-200 text-zinc-900 hover:bg-zinc-50"
+            }
           >
             Vencidos
           </Button>
@@ -387,7 +371,12 @@ export default function PendenciasPage() {
             >
               Cancelar
             </Button>
-            <Button onClick={handleMarkAsPaid} disabled={loading} variant="outline" className="bg-white border-black text-black hover:bg-zinc-50">
+            <Button
+              onClick={handleMarkAsPaid}
+              disabled={loading}
+              variant="outline"
+              className="bg-white border-zinc-200 text-zinc-900 hover:bg-zinc-50"
+            >
               Confirmar Pago
             </Button>
           </DialogFooter>

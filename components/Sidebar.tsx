@@ -97,14 +97,14 @@ export default function Sidebar() {
   return (
     <>
       <aside
-        className={`fixed left-0 top-0 h-screen bg-white text-zinc-900 shadow-lg border-r border-zinc-200 transition-all duration-300 z-40 ${
+        className={`fixed left-0 top-0 h-screen bg-white text-zinc-900 border-r border-zinc-200 transition-all duration-300 z-40 ${
           isCollapsed ? "w-20" : "w-64"
         }`}
       >
         <div className="flex h-full flex-col relative">
           {/* Logo/Header */}
           <div
-            className={`flex items-center gap-3 border-b border-zinc-200 px-6 py-6 transition-all ${
+            className={`flex items-center gap-3 border-b border-zinc-200/70 px-6 py-5 transition-all ${
               isCollapsed ? "justify-center px-4" : ""
             }`}
           >
@@ -119,13 +119,18 @@ export default function Sidebar() {
             </div>
             {!isCollapsed && (
               <div className="transition-opacity duration-300">
-                <h1 className="text-lg font-bold text-zinc-900">CelleCars</h1>
+                <h1 className="text-[15px] font-semibold tracking-tight text-zinc-900">
+                  CelleCars
+                </h1>
+                <p className="text-[11px] text-zinc-500 leading-none mt-1">
+                  Gerenciador
+                </p>
               </div>
             )}
           </div>
 
           {/* Navigation */}
-          <nav className="flex-1 space-y-1 px-4 py-6">
+          <nav className="flex-1 space-y-1 px-3 py-5">
             {menuItems.map((item) => {
               // Para "Inicio", só ativo quando for exatamente "/"
               // Para outros, ativo quando o pathname começa com o href
@@ -136,16 +141,16 @@ export default function Sidebar() {
                 <Link
                   key={item.href}
                   href={item.href}
-                  className={`flex items-center gap-3 rounded-lg px-4 py-3 text-sm font-medium transition-colors relative group ${
+                  className={`flex items-center gap-3 rounded-xl px-4 py-3 text-sm font-medium transition-colors relative group ${
                     isCollapsed ? "justify-center px-3" : ""
                   } ${
                     isActive
-                      ? "bg-blue-600 text-white"
-                      : "text-zinc-700 hover:bg-zinc-100 hover:text-zinc-900"
+                      ? "bg-blue-600 text-white shadow-sm shadow-blue-600/15"
+                      : "text-zinc-700 hover:bg-zinc-100/80 hover:text-zinc-900"
                   }`}
                   title={isCollapsed ? item.name : ""}
                 >
-                  <item.icon className="h-5 w-5 shrink-0" />
+                  <item.icon className="h-[18px] w-[18px] shrink-0" />
                   {!isCollapsed && (
                     <span className="transition-opacity duration-300">
                       {item.name}
@@ -162,7 +167,7 @@ export default function Sidebar() {
           </nav>
 
           {/* Informações do Usuário e Ações */}
-          <div className="mt-auto border-t border-zinc-200 pt-4 px-4 pb-4 space-y-2">
+          <div className="mt-auto border-t border-zinc-200/70 pt-4 px-3 pb-4 space-y-2">
             {/* Nome do Usuário */}
             {user && (
               <div
@@ -190,7 +195,7 @@ export default function Sidebar() {
             <Button
               onClick={() => setShowChangePassword(true)}
               variant="ghost"
-              className={`w-full flex items-center gap-3 px-4 py-2 text-zinc-700 hover:bg-zinc-100 rounded-lg transition-colors ${
+              className={`w-full flex items-center gap-3 px-4 py-2 text-zinc-700 hover:bg-zinc-100/80 rounded-xl transition-colors ${
                 isCollapsed ? "justify-center" : ""
               }`}
               title="Cambiar Contraseña"
@@ -203,7 +208,7 @@ export default function Sidebar() {
             <Button
               onClick={() => setShowLogoutDialog(true)}
               variant="ghost"
-              className={`w-full flex items-center gap-3 px-4 py-2 text-zinc-700 hover:bg-zinc-100 rounded-lg transition-colors ${
+              className={`w-full flex items-center gap-3 px-4 py-2 text-zinc-700 hover:bg-zinc-100/80 rounded-xl transition-colors ${
                 isCollapsed ? "justify-center" : ""
               }`}
               title="Cerrar Sesión"
@@ -215,8 +220,8 @@ export default function Sidebar() {
 
           {/* Footer */}
           {!isCollapsed && (
-            <div className="border-t border-zinc-200 px-6 py-4">
-              <p className="text-xs text-zinc-500 text-center font-semibold">
+            <div className="border-t border-zinc-200/70 px-6 py-4">
+              <p className="text-xs text-zinc-500 text-center font-medium">
                 Development by Your<span className="text-purple-600">P</span>lat
               </p>
             </div>
@@ -227,7 +232,7 @@ export default function Sidebar() {
             onClick={() => setIsCollapsed(!isCollapsed)}
             variant="outline"
             size="icon"
-            className={`absolute -right-4 top-[72px] -translate-y-1/2 w-8 h-8 bg-white border-2 border-zinc-200 rounded-full shadow-md z-50 ${
+            className={`absolute -right-4 top-[70px] -translate-y-1/2 w-8 h-8 bg-white/90 backdrop-blur border border-zinc-200/80 rounded-full shadow-sm z-50 ${
               isCollapsed ? "" : "rotate-180"
             }`}
             aria-label={isCollapsed ? "Expandir menú" : "Colapsar menú"}

@@ -30,7 +30,11 @@ export default function ClientDetailsHeader({
 
   return (
     <div className="mb-6 flex items-center gap-4">
-      <Button variant="outline" onClick={() => router.push("/clientes")}>
+      <Button
+        variant="outline"
+        onClick={() => router.push("/clientes")}
+        className="bg-white border-zinc-200 text-zinc-900 hover:bg-zinc-50"
+      >
         <ArrowLeft className="mr-2 h-4 w-4" />
         Volver
       </Button>
@@ -52,7 +56,7 @@ export default function ClientDetailsHeader({
           <Button 
             onClick={onEditClick} 
             variant="outline" 
-            className="bg-white border-black text-black hover:bg-zinc-50"
+            className="bg-white border-zinc-200 text-zinc-900 hover:bg-zinc-50"
           >
             <Edit className="mr-2 h-4 w-4" />
             Editar
@@ -60,6 +64,7 @@ export default function ClientDetailsHeader({
           <Button
             variant="outline"
             onClick={onDeleteClick}
+            className="bg-white border-zinc-200 text-zinc-900 hover:bg-zinc-50"
           >
             <Trash2 className="mr-2 h-4 w-4" />
             Excluir
@@ -78,6 +83,7 @@ export default function ClientDetailsHeader({
           <Button
             variant="outline"
             onClick={onCancel}
+            className="bg-white border-zinc-200 text-zinc-900 hover:bg-zinc-50"
           >
             <X className="mr-2 h-4 w-4" />
             Cancelar

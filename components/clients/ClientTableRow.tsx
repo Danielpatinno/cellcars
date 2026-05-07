@@ -10,9 +10,10 @@ import { Client } from "@/app/clientes/actions";
 interface ClientTableRowProps {
   cliente: Client;
   onDeleteClick: (cliente: Client) => void;
+  onEditClick?: (cliente: Client) => void;
 }
 
-export default function ClientTableRow({ cliente, onDeleteClick }: ClientTableRowProps) {
+export default function ClientTableRow({ cliente, onDeleteClick, onEditClick }: ClientTableRowProps) {
   const router = useRouter();
 
   return (
@@ -58,11 +59,16 @@ export default function ClientTableRow({ cliente, onDeleteClick }: ClientTableRo
           <Button
             variant="outline"
             size="sm"
-            className="bg-white border-black text-black hover:bg-zinc-50"
             onClick={(e) => {
               e.stopPropagation();
+              if (onEditClick) {
+                onEditClick(cliente);
+                return;
+              }
               router.push(`/clientes/${cliente.id}`);
             }}
+            className="bg-white border-zinc-200 text-zinc-900 hover:bg-zinc-50"
+            aria-label="Editar cliente"
           >
             <Edit className="h-4 w-4" />
           </Button>
@@ -73,6 +79,8 @@ export default function ClientTableRow({ cliente, onDeleteClick }: ClientTableRo
               e.stopPropagation();
               onDeleteClick(cliente);
             }}
+            className="bg-white border-zinc-200 text-zinc-900 hover:bg-zinc-50"
+            aria-label="Eliminar cliente"
           >
             <Trash2 className="h-4 w-4 text-red-600" />
           </Button>

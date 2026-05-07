@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
-import { useRouter, useParams } from "next/navigation";
+import { useState, useEffect, useMemo, useRef } from "react";
+import { useRouter, useParams, useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ArrowLeft, Edit, Save, X, Trash2, ZoomIn, X as XIcon, DollarSign, MessageCircle, Loader2 } from "lucide-react";
@@ -25,6 +25,7 @@ import FormattedDate from "@/components/FormattedDate";
 import { compressImages } from "@/lib/image-compression";
 import { formatCurrency } from "@/lib/currency-utils";
 import { useWhatsApp } from "@/hooks/useWhatsApp";
+import { formatThousands, parseThousands } from "@/lib/number-utils";
 
 interface VehicleWithImages extends Vehicle {
   images?: string[];
@@ -38,6 +39,7 @@ interface VehicleWithImages extends Vehicle {
 export default function VehicleDetailsPage() {
   const router = useRouter();
   const params = useParams();
+  const searchParams = useSearchParams();
   const id = parseInt(params.id as string);
   const [vehicle, setVehicle] = useState<VehicleWithImages | null>(null);
   const [loading, setLoading] = useState(true);
@@ -71,6 +73,12 @@ export default function VehicleDetailsPage() {
     // Inicializar year
     setFormData((prev) => ({ ...prev, year: new Date().getFullYear() }));
   }, [id]);
+
+  useEffect(() => {
+    if (searchParams.get("edit") === "1") {
+      setEditing(true);
+    }
+  }, [searchParams]);
 
   const loadVehicle = async () => {
     setLoading(true);
@@ -226,6 +234,11 @@ export default function VehicleDetailsPage() {
     return ((profit / formData.cost_price) * 100).toFixed(2);
   };
 
+  const mileageDisplay = useMemo(
+    () => formatThousands(formData.mileage),
+    [formData.mileage],
+  );
+
   if (loading && !vehicle) {
     return (
       <div className="p-8">
@@ -238,7 +251,11 @@ export default function VehicleDetailsPage() {
     return (
       <div className="p-8">
         <p className="text-zinc-600">Vehículo no encontrado</p>
-        <Button onClick={() => router.push("/vehicles")} className="mt-4">
+        <Button
+          onClick={() => router.push("/vehicles")}
+          className="mt-4 bg-white border-zinc-200 text-zinc-900 hover:bg-zinc-50"
+          variant="outline"
+        >
           Volver
         </Button>
       </div>
@@ -253,7 +270,11 @@ export default function VehicleDetailsPage() {
   return (
     <div className="p-8">
       <div className="mb-6 flex items-center gap-4">
-        <Button variant="outline" onClick={() => router.push("/vehicles")}>
+        <Button
+          variant="outline"
+          onClick={() => router.push("/vehicles")}
+          className="bg-white border-zinc-200 text-zinc-900 hover:bg-zinc-50"
+        >
           <ArrowLeft className="mr-2 h-4 w-4" />
           Volver
         </Button>
@@ -284,13 +305,18 @@ export default function VehicleDetailsPage() {
                 Enviar Mensaje
               </Button>
             )}
-            <Button onClick={() => setEditing(true)} variant="outline" className="bg-white border-black text-black hover:bg-zinc-50">
+            <Button
+              onClick={() => setEditing(true)}
+              variant="outline"
+              className="bg-white border-zinc-200 text-zinc-900 hover:bg-zinc-50"
+            >
               <Edit className="mr-2 h-4 w-4" />
               Editar
             </Button>
             <Button
               variant="outline"
               onClick={() => setShowDeleteDialog(true)}
+              className="bg-white border-zinc-200 text-zinc-900 hover:bg-zinc-50"
             >
               <Trash2 className="mr-2 h-4 w-4" />
               Excluir
@@ -315,6 +341,7 @@ export default function VehicleDetailsPage() {
                 setNewImagesFiles([]);
                 setNewImagesPreview([]);
               }}
+              className="bg-white border-zinc-200 text-zinc-900 hover:bg-zinc-50"
             >
               <X className="mr-2 h-4 w-4" />
               Cancelar
@@ -344,6 +371,7 @@ export default function VehicleDetailsPage() {
                     variant="outline"
                     size="sm"
                     onClick={() => openZoom(displayImages[0], 0)}
+                    className="bg-white/90 border-zinc-200 text-zinc-900 hover:bg-white"
                   >
                     <ZoomIn className="h-4 w-4" />
                   </Button>
@@ -426,6 +454,7 @@ export default function VehicleDetailsPage() {
                   <Button
                     variant="outline"
                     onClick={() => fileInputRef.current?.click()}
+                    className="bg-white border-zinc-200 text-zinc-900 hover:bg-zinc-50"
                   >
                     Agregar Imágenes ({displayImages.length}/6)
                   </Button>
@@ -438,8 +467,8 @@ export default function VehicleDetailsPage() {
               {editing && (
                 <Button
                   variant="outline"
-                  className="mt-4"
                   onClick={() => fileInputRef.current?.click()}
+                  className="mt-4 bg-white border-zinc-200 text-zinc-900 hover:bg-zinc-50"
                 >
                   Agregar Imágenes
                 </Button>
@@ -552,10 +581,14 @@ export default function VehicleDetailsPage() {
                     Kilometraje
                   </label>
                   <Input
-                    type="number"
-                    value={formData.mileage}
+                    type="text"
+                    inputMode="numeric"
+                    value={mileageDisplay}
                     onChange={(e) =>
-                      setFormData({ ...formData, mileage: parseInt(e.target.value) })
+                      setFormData({
+                        ...formData,
+                        mileage: parseThousands(e.target.value),
+                      })
                     }
                   />
                 </div>
@@ -707,6 +740,7 @@ export default function VehicleDetailsPage() {
                 <Button
                   variant="outline"
                   onClick={() => setShowZoomImage(false)}
+                  aria-label="Cerrar"
                 >
                   <XIcon className="h-4 w-4" />
                 </Button>

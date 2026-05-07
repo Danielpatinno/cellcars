@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Car, X, Image as ImageIcon, Upload, Loader2, ArrowLeft } from "lucide-react";
@@ -8,6 +8,7 @@ import { createVehicle } from "../actions";
 import { CurrencyInput } from "@/components/ui/currency-input";
 import { toast } from "sonner";
 import { compressImages } from "@/lib/image-compression";
+import { formatThousands, parseThousands } from "@/lib/number-utils";
 
 export default function NewVehiclePage() {
   const router = useRouter();
@@ -26,6 +27,7 @@ export default function NewVehiclePage() {
   const [imagensFiles, setImagensFiles] = useState<File[]>([]);
   const [imagensPreview, setImagensPreview] = useState<string[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const mileageDisplay = useMemo(() => formatThousands(formData.mileage), [formData.mileage]);
 
   useEffect(() => {
     setFormData((prev) => ({ ...prev, year: new Date().getFullYear() }));
@@ -119,7 +121,7 @@ export default function NewVehiclePage() {
           <Button
             variant="outline"
             onClick={() => router.push("/vehicles")}
-            className="bg-white border-black text-black hover:bg-zinc-50"
+            className="bg-white border-zinc-200 text-zinc-900 hover:bg-zinc-50"
           >
             <ArrowLeft className="mr-2 h-4 w-4" />
             Volver
@@ -237,9 +239,12 @@ export default function NewVehiclePage() {
                 Kilometraje
               </label>
               <input
-                type="number"
-                value={formData.mileage}
-                onChange={(e) => setFormData({ ...formData, mileage: parseInt(e.target.value) })}
+                type="text"
+                inputMode="numeric"
+                value={mileageDisplay}
+                onChange={(e) =>
+                  setFormData({ ...formData, mileage: parseThousands(e.target.value) })
+                }
                 className="w-full rounded-lg border border-zinc-300 bg-white px-4 py-2 text-zinc-900"
                 placeholder="0"
               />
@@ -280,7 +285,7 @@ export default function NewVehiclePage() {
                       <Button
                         type="button"
                         variant="outline"
-                        className="flex items-center gap-2"
+                        className="flex items-center gap-2 bg-white border-zinc-200 text-zinc-900 hover:bg-zinc-50"
                         onClick={() => fileInputRef.current?.click()}
                       >
                         <Upload className="h-4 w-4" />
@@ -340,7 +345,7 @@ export default function NewVehiclePage() {
                 type="button"
                 variant="outline"
                 onClick={() => router.push("/vehicles")}
-                className="flex-1"
+                className="flex-1 bg-white border-zinc-200 text-zinc-900 hover:bg-zinc-50"
               >
                 Cancelar
               </Button>
