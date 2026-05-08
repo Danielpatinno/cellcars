@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useRouter, useParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { ArrowLeft, Plus, X, Check, Calendar } from "lucide-react";
+import { ArrowLeft, Plus, Check, Calendar, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { type Installment } from "../actions";
 import {
@@ -19,7 +19,11 @@ import FormattedDate from "@/components/FormattedDate";
 import { CurrencyInput } from "@/components/ui/currency-input";
 import { formatCurrency } from "@/lib/currency-utils";
 import { useSale } from "@/hooks/sales/useSale";
-import { useAddInstallment, useMarkInstallmentPaid } from "@/hooks/sales/useSaleMutations";
+import {
+  useAddInstallment,
+  useDeleteSale,
+  useMarkInstallmentPaid,
+} from "@/hooks/sales/useSaleMutations";
 
 export default function SaleDetailsPage() {
   const router = useRouter();
@@ -28,10 +32,13 @@ export default function SaleDetailsPage() {
   const saleQuery = useSale(Number.isFinite(id) ? id : null);
   const addInstallmentMutation = useAddInstallment();
   const markPaidMutation = useMarkInstallmentPaid();
+  const deleteSaleMutation = useDeleteSale();
   const sale = saleQuery.data ?? null;
-  const loading = saleQuery.isLoading || addInstallmentMutation.isPending || markPaidMutation.isPending;
+  const loading =
+    saleQuery.isLoading || addInstallmentMutation.isPending || markPaidMutation.isPending;
   const [showAddInstallment, setShowAddInstallment] = useState(false);
   const [showMarkAsPaid, setShowMarkAsPaid] = useState(false);
+  const [showDeleteSale, setShowDeleteSale] = useState(false);
   const [selectedInstallmentId, setSelectedInstallmentId] = useState<number | null>(null);
   const [paymentDate, setPaymentDate] = useState("");
   const [newInstallment, setNewInstallment] = useState({
@@ -88,6 +95,16 @@ export default function SaleDetailsPage() {
     }
   };
 
+  const handleDeleteSale = async () => {
+    try {
+      await deleteSaleMutation.mutateAsync(id);
+      toast.success("Venta eliminada. El vehículo volvió a disponible.");
+      setShowDeleteSale(false);
+      router.push("/sales");
+    } catch (error: any) {
+      toast.error("Error al eliminar venta: " + (error.message || "Error desconocido"));
+    }
+  };
 
   const isOverdue = (dueDate: string) => {
     return new Date(dueDate) < new Date() && !sale?.installments?.find((inst: Installment) => inst.due_date === dueDate)?.payment_date;
@@ -124,7 +141,7 @@ export default function SaleDetailsPage() {
 
   return (
     <div className="p-8">
-      <div className="mb-6 flex items-center gap-4">
+      <div className="mb-6 flex flex-wrap items-center gap-3">
         <Button
           variant="outline"
           onClick={() => router.push("/sales")}
@@ -133,7 +150,18 @@ export default function SaleDetailsPage() {
           <ArrowLeft className="mr-2 h-4 w-4" />
           Volver
         </Button>
-        <h1 className="text-3xl font-bold text-zinc-900">Detalles de la Venta</h1>
+        <h1 className="text-3xl font-bold text-zinc-900 min-w-0 flex-1">
+          Detalles de la Venta
+        </h1>
+        <Button
+          type="button"
+          variant="outline"
+          onClick={() => setShowDeleteSale(true)}
+          className="border-red-200 bg-white text-red-700 hover:bg-red-50"
+        >
+          <Trash2 className="mr-2 h-4 w-4" />
+          Eliminar venta
+        </Button>
       </div>
 
       <div className="space-y-6">
@@ -443,6 +471,36 @@ export default function SaleDetailsPage() {
               disabled={loading}
             >
               Confirmar Pago
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={showDeleteSale} onOpenChange={setShowDeleteSale}>
+        <DialogContent className="bg-white">
+          <DialogHeader>
+            <DialogTitle className="text-black">¿Eliminar esta venta?</DialogTitle>
+            <DialogDescription>
+              Se borrarán los recibos/cuotas de esta venta y el vehículo asociado volverá a
+              estado <strong className="text-zinc-800">Disponible</strong>. Esta acción no se
+              puede deshacer.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setShowDeleteSale(false)}
+              disabled={deleteSaleMutation.isPending}
+              className="bg-white border-zinc-200 text-zinc-900 hover:bg-zinc-50"
+            >
+              Cancelar
+            </Button>
+            <Button
+              onClick={() => void handleDeleteSale()}
+              disabled={deleteSaleMutation.isPending}
+              className="bg-red-600 text-white hover:bg-red-700 disabled:opacity-60"
+            >
+              Eliminar venta
             </Button>
           </DialogFooter>
         </DialogContent>

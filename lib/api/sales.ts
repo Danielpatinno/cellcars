@@ -35,3 +35,11 @@ export async function markInstallmentPaidApi(
   });
 }
 
+export async function deleteSaleApi(saleId: number) {
+  const res = await http<{ success: true; vehicle_id: number }>(
+    `/api/sales/${saleId}`,
+    { method: "DELETE" },
+  );
+  return res;
+}
+

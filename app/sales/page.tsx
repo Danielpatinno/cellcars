@@ -4,19 +4,31 @@ import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { DollarSign, Plus, Search, Calendar, Eye } from "lucide-react";
+import { DollarSign, Plus, Search, Calendar, Eye, Trash2 } from "lucide-react";
 import { type Sale } from "./actions";
 import FormattedDate from "@/components/FormattedDate";
 import { TableLoading } from "@/components/ui/table-loading";
 import { formatCurrency } from "@/lib/currency-utils";
 import { useSales } from "@/hooks/sales/useSales";
+import { useDeleteSale } from "@/hooks/sales/useSaleMutations";
+import { toast } from "sonner";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 
 export default function SalesPage() {
   const router = useRouter();
   const salesQuery = useSales();
+  const deleteSaleMutation = useDeleteSale();
   const sales = (salesQuery.data || []) as Sale[];
   const loading = salesQuery.isLoading;
   const [searchTerm, setSearchTerm] = useState("");
+  const [saleToDelete, setSaleToDelete] = useState<Sale | null>(null);
 
   const filteredSales = useMemo(() => {
     if (!searchTerm) return sales;
@@ -30,6 +42,17 @@ export default function SalesPage() {
         sale.payment_method.toLowerCase().includes(term)
     );
   }, [sales, searchTerm]);
+
+  const confirmDeleteSale = async () => {
+    if (!saleToDelete) return;
+    try {
+      await deleteSaleMutation.mutateAsync(saleToDelete.id);
+      toast.success("Venta eliminada. El vehículo volvió a disponible.");
+      setSaleToDelete(null);
+    } catch (error: any) {
+      toast.error("Error al eliminar venta: " + (error.message || "Error desconocido"));
+    }
+  };
 
 
   return (
@@ -190,18 +213,32 @@ export default function SalesPage() {
                       </span>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          router.push(`/sales/${sale.id}`);
-                        }}
-                        className="bg-white border-zinc-200 text-zinc-900 hover:bg-zinc-50"
-                      >
-                        <Eye className="mr-2 h-4 w-4" />
-                        Ver Detalles
-                      </Button>
+                      <div className="inline-flex flex-wrap justify-end gap-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            router.push(`/sales/${sale.id}`);
+                          }}
+                          className="bg-white border-zinc-200 text-zinc-900 hover:bg-zinc-50"
+                        >
+                          <Eye className="mr-2 h-4 w-4" />
+                          Ver Detalles
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setSaleToDelete(sale);
+                          }}
+                          className="border-red-200 bg-white text-red-700 hover:bg-red-50"
+                        >
+                          <Trash2 className="mr-2 h-4 w-4" />
+                          Eliminar
+                        </Button>
+                      </div>
                     </td>
                   </tr>
                 ))}
@@ -210,6 +247,43 @@ export default function SalesPage() {
           </div>
         </div>
       )}
+      <Dialog
+        open={saleToDelete !== null}
+        onOpenChange={(open) => {
+          if (!open) setSaleToDelete(null);
+        }}
+      >
+        <DialogContent className="bg-white" onClick={(e) => e.stopPropagation()}>
+          <DialogHeader>
+            <DialogTitle className="text-black">¿Eliminar esta venta?</DialogTitle>
+            <DialogDescription>
+              Se eliminará la venta
+              {saleToDelete?.vehicle
+                ? ` del vehículo ${saleToDelete.vehicle.brand} ${saleToDelete.vehicle.model} — ${saleToDelete.vehicle.plate}`
+                : ""}
+              . Los recibos/cuotas se borrarán y el vehículo volverá a{" "}
+              <strong className="text-zinc-800">Disponible</strong>. No se puede deshacer.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setSaleToDelete(null)}
+              disabled={deleteSaleMutation.isPending}
+              className="bg-white border-zinc-200 text-zinc-900 hover:bg-zinc-50"
+            >
+              Cancelar
+            </Button>
+            <Button
+              onClick={() => void confirmDeleteSale()}
+              disabled={deleteSaleMutation.isPending}
+              className="bg-red-600 text-white hover:bg-red-700 disabled:opacity-60"
+            >
+              Eliminar venta
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
