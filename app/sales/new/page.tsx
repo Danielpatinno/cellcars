@@ -314,7 +314,12 @@ export default function NewSalePage() {
           <div className="bg-white rounded-lg border border-zinc-200 p-6 shadow-sm">
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-xl font-semibold text-black">Recibos/Cuotas</h2>
-              <Button type="button" onClick={addInstallment} variant="outline">
+              <Button
+                type="button"
+                onClick={addInstallment}
+                variant="outline"
+                className="bg-blue-600 text-white border border-blue-600 hover:bg-blue-700"
+              >
                 <Plus className="mr-2 h-4 w-4" />
                 Agregar Recibo
               </Button>
@@ -338,6 +343,8 @@ export default function NewSalePage() {
                         variant="outline"
                         size="sm"
                         onClick={() => removeInstallment(index)}
+                        className="bg-white border-zinc-200 text-zinc-900 hover:bg-zinc-50"
+                        aria-label="Quitar recibo"
                       >
                         <X className="h-4 w-4" />
                       </Button>
