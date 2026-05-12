@@ -251,7 +251,7 @@ export default function NewVehiclePage() {
             </div>
             <div>
               <label className="mb-1 block text-sm font-medium text-zinc-500">
-                Status *
+                Situación *
               </label>
               <select
                 value={formData.status}

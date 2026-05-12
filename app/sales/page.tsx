@@ -109,7 +109,7 @@ export default function SalesPage() {
                     Método de Pago
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-black uppercase tracking-wider">
-                    Estado
+                    Situación
                   </th>
                   <th className="px-6 py-3 text-right text-xs font-medium text-zinc-700 uppercase tracking-wider">
                     Acciones
@@ -153,7 +153,7 @@ export default function SalesPage() {
                     Método de Pago
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-black uppercase tracking-wider">
-                    Estado
+                    Situación
                   </th>
                   <th className="px-6 py-3 text-right text-xs font-medium text-zinc-700 uppercase tracking-wider">
                     Acciones

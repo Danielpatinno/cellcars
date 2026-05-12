@@ -208,7 +208,7 @@ export default function SaleDetailsPage() {
               </div>
             )}
             <div>
-              <label className="text-sm font-medium text-zinc-500">Estado</label>
+              <label className="text-sm font-medium text-zinc-500">Situación</label>
               <p className="mt-1">
                 <span
                   className={`px-2 py-1 text-sm font-medium rounded ${
@@ -264,7 +264,7 @@ export default function SaleDetailsPage() {
                       Pago
                     </th>
                     <th className="px-4 py-3 text-left text-xs font-medium text-black uppercase">
-                      Estado
+                      Situación
                     </th>
                     <th className="px-4 py-3 text-left text-xs font-medium text-black uppercase">
                       Notas
@@ -482,7 +482,7 @@ export default function SaleDetailsPage() {
             <DialogTitle className="text-black">¿Eliminar esta venta?</DialogTitle>
             <DialogDescription>
               Se borrarán los recibos/cuotas de esta venta y el vehículo asociado volverá a
-              estado <strong className="text-zinc-800">Disponible</strong>. Esta acción no se
+              <strong className="text-zinc-800">Disponible</strong>. Esta acción no se
               puede deshacer.
             </DialogDescription>
           </DialogHeader>

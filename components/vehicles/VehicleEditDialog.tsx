@@ -198,7 +198,7 @@ export default function VehicleEditDialog({
             </div>
             <div className="md:col-span-2">
               <label className="mb-1 block text-sm font-medium text-zinc-600">
-                Estado
+                Situación
               </label>
               <select
                 value={form?.status ?? "disponible"}

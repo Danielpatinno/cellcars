@@ -594,7 +594,7 @@ export default function VehicleDetailsPage() {
                 </div>
                 <div>
                   <label className="mb-1 block text-sm font-medium text-zinc-500">
-                    Estado *
+                    Situación *
                   </label>
                   <select
                     value={formData.status}
@@ -637,7 +637,7 @@ export default function VehicleDetailsPage() {
                 <p className="mt-1 text-lg text-zinc-900">{vehicle.mileage.toLocaleString("es-ES")} km</p>
               </div>
               <div>
-                <label className="text-sm font-medium text-zinc-500">Estado</label>
+                <label className="text-sm font-medium text-zinc-500">Situación</label>
                 <p className="mt-1">
                   <span
                     className={`px-2 py-1 text-sm font-medium rounded ${
