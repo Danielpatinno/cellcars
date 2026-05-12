@@ -133,13 +133,13 @@ function VeiculosPageContent() {
                       Precio Venta
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-zinc-700">
-                      Margen de Ganancia
+                      Margen
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-zinc-700">
                       Chapa
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-zinc-700">
-                      Status
+                      Situación
                     </th>
                     <th className="px-6 py-3 text-right text-xs font-medium uppercase tracking-wider text-zinc-700">
                       Acciones
@@ -188,13 +188,13 @@ function VeiculosPageContent() {
                       Precio Venta
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-zinc-700">
-                      Margen de Ganancia
+                      Margen
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-zinc-700">
                       Chapa
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-zinc-700">
-                      Status
+                      Situación
                     </th>
                     <th className="px-6 py-3 text-right text-xs font-medium uppercase tracking-wider text-zinc-700">
                       Acciones
