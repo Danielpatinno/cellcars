@@ -27,12 +27,6 @@ const CurrencyInput = forwardRef<HTMLInputElement, CurrencyInputProps>(
     ref,
   ) => {
     const [displayValue, setDisplayValue] = useState("");
-    /** Solo USD: dígitos planos al editar; PYG siempre muestra miles con punto mientras escribe. */
-    const [vehicleWholeEditing, setVehicleWholeEditing] = useState(false);
-
-    useEffect(() => {
-      setVehicleWholeEditing(false);
-    }, [vehicleCurrency]);
 
     const prefix =
       vehicleCurrency === "PYG"
@@ -52,18 +46,14 @@ const CurrencyInput = forwardRef<HTMLInputElement, CurrencyInputProps>(
       }
       if (vehicleCurrency === "USD") {
         const whole = Math.round(value || 0);
-        if (vehicleWholeEditing) {
-          setDisplayValue(whole === 0 ? "" : String(whole));
-        } else {
-          setDisplayValue(whole > 0 ? formatCurrency(whole * 100) : "");
-        }
+        setDisplayValue(whole > 0 ? formatCurrency(whole * 100) : "");
         return;
       }
       const formatted = (value / 100).toFixed(2).replace(".", ",");
       const parts = formatted.split(",");
       parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ".");
       setDisplayValue(parts.join(","));
-    }, [value, vehicleCurrency, vehicleWholeEditing]);
+    }, [value, vehicleCurrency]);
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
       let inputValue = e.target.value.replace(/[^\d]/g, "");
@@ -101,24 +91,11 @@ const CurrencyInput = forwardRef<HTMLInputElement, CurrencyInputProps>(
     };
 
     const handleFocus = (e: React.FocusEvent<HTMLInputElement>) => {
-      if (vehicleCurrency === "USD") {
-        setVehicleWholeEditing(true);
-        const whole = Math.round(value || 0);
-        setDisplayValue(whole === 0 ? "" : String(whole));
-      }
       onFocusProp?.(e);
     };
 
     const handleBlur = (e: React.FocusEvent<HTMLInputElement>) => {
-      if (vehicleCurrency === "USD") {
-        setVehicleWholeEditing(false);
-        const whole = Math.round(value || 0);
-        if (whole > 0) {
-          setDisplayValue(formatCurrency(whole * 100));
-        } else {
-          setDisplayValue("");
-        }
-      } else if (vehicleCurrency !== "PYG" && value > 0) {
+      if (!vehicleCurrency && value > 0) {
         const formatted = (value / 100).toFixed(2).replace(".", ",");
         const parts = formatted.split(",");
         parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ".");
