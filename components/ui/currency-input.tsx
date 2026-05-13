@@ -1,7 +1,7 @@
 "use client";
 
 import { Input } from "./input";
-import { forwardRef, useState, useEffect } from "react";
+import { forwardRef, useCallback, useEffect, useState } from "react";
 import { cn } from "@/lib/utils";
 import { formatPygWholeGuaranies, formatCurrency } from "@/lib/currency-utils";
 import type { VehiclePriceCurrency } from "@/lib/vehicle-currency";
@@ -11,6 +11,44 @@ interface CurrencyInputProps extends Omit<React.InputHTMLAttributes<HTMLInputEle
   onChange: (value: number) => void;
   /** Si se define, el prefijo refleja guaraníes o dólares (precios de vehículo). */
   vehicleCurrency?: VehiclePriceCurrency;
+}
+
+/** "43.000,50" / "43000,5" → 43000.5 (quita miles con punto, coma decimal). */
+function parseLatinDecimal(raw: string): number | null {
+  const t = raw.trim();
+  if (t === "") return null;
+  const noThousands = t.replace(/\./g, "");
+  const normalized = noThousands.replace(",", ".");
+  if (normalized === "" || normalized === "." || normalized === "-") return null;
+  const n = parseFloat(normalized);
+  return Number.isFinite(n) ? n : null;
+}
+
+/** "1.000.000" → guaraníes enteros. */
+function parsePygWhole(raw: string): number | null {
+  const d = raw.replace(/\./g, "").replace(/[^\d]/g, "");
+  if (d === "") return null;
+  const n = parseInt(d, 10);
+  return Number.isFinite(n) ? n : null;
+}
+
+function formatDisplayFromValue(
+  value: number,
+  vehicleCurrency: VehiclePriceCurrency | undefined,
+): string {
+  if (value === 0 || value === null || value === undefined) return "";
+  if (vehicleCurrency === "PYG") {
+    const whole = Math.round(value);
+    return whole > 0 ? formatPygWholeGuaranies(whole) : "";
+  }
+  if (vehicleCurrency === "USD") {
+    const whole = Math.round(value);
+    return whole > 0 ? formatCurrency(whole * 100) : "";
+  }
+  const formatted = (value / 100).toFixed(2).replace(".", ",");
+  const parts = formatted.split(",");
+  parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+  return parts.join(",");
 }
 
 const CurrencyInput = forwardRef<HTMLInputElement, CurrencyInputProps>(
@@ -27,6 +65,16 @@ const CurrencyInput = forwardRef<HTMLInputElement, CurrencyInputProps>(
     ref,
   ) => {
     const [displayValue, setDisplayValue] = useState("");
+    const [focused, setFocused] = useState(false);
+
+    const syncFromParent = useCallback(() => {
+      setDisplayValue(formatDisplayFromValue(value, vehicleCurrency));
+    }, [value, vehicleCurrency]);
+
+    useEffect(() => {
+      if (focused) return;
+      syncFromParent();
+    }, [focused, syncFromParent]);
 
     const prefix =
       vehicleCurrency === "PYG"
@@ -35,72 +83,42 @@ const CurrencyInput = forwardRef<HTMLInputElement, CurrencyInputProps>(
           ? "US$"
           : "$";
 
-    useEffect(() => {
-      if (value === 0 || value === null || value === undefined) {
-        setDisplayValue("");
-        return;
-      }
-      if (vehicleCurrency === "PYG") {
-        setDisplayValue(value > 0 ? formatPygWholeGuaranies(value) : "");
-        return;
-      }
-      if (vehicleCurrency === "USD") {
-        const whole = Math.round(value || 0);
-        setDisplayValue(whole > 0 ? formatCurrency(whole * 100) : "");
-        return;
-      }
-      const formatted = (value / 100).toFixed(2).replace(".", ",");
-      const parts = formatted.split(",");
-      parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ".");
-      setDisplayValue(parts.join(","));
-    }, [value, vehicleCurrency]);
-
     const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-      let inputValue = e.target.value.replace(/[^\d]/g, "");
+      const raw = e.target.value;
+      setDisplayValue(raw);
 
-      if (inputValue === "") {
+      if (raw.trim() === "") {
         onChange(0);
-        setDisplayValue("");
         return;
       }
 
       if (vehicleCurrency === "PYG") {
-        const guaranies = parseInt(inputValue, 10);
-        if (!Number.isFinite(guaranies)) {
-          onChange(0);
-          setDisplayValue("");
-          return;
-        }
-        onChange(guaranies);
+        const n = parsePygWhole(raw);
+        if (n === null) return;
+        onChange(n);
         return;
       }
 
       if (vehicleCurrency === "USD") {
-        const dollars = parseInt(inputValue, 10);
-        if (!Number.isFinite(dollars)) {
-          onChange(0);
-          setDisplayValue("");
-          return;
-        }
-        onChange(dollars);
+        const n = parseLatinDecimal(raw);
+        if (n === null) return;
+        onChange(Math.round(n));
         return;
       }
 
-      const numericValue = parseInt(inputValue, 10);
-      onChange(numericValue);
+      const n = parseLatinDecimal(raw);
+      if (n === null) return;
+      onChange(Math.round(n * 100));
     };
 
     const handleFocus = (e: React.FocusEvent<HTMLInputElement>) => {
+      setFocused(true);
       onFocusProp?.(e);
     };
 
     const handleBlur = (e: React.FocusEvent<HTMLInputElement>) => {
-      if (!vehicleCurrency && value > 0) {
-        const formatted = (value / 100).toFixed(2).replace(".", ",");
-        const parts = formatted.split(",");
-        parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ".");
-        setDisplayValue(parts.join(","));
-      }
+      setFocused(false);
+      syncFromParent();
       onBlurProp?.(e);
     };
 
@@ -125,14 +143,13 @@ const CurrencyInput = forwardRef<HTMLInputElement, CurrencyInputProps>(
             !vehicleCurrency && "pl-8",
             className,
           )}
-          inputMode="numeric"
+          inputMode="decimal"
         />
       </div>
     );
-  }
+  },
 );
 
 CurrencyInput.displayName = "CurrencyInput";
 
 export { CurrencyInput };
-
