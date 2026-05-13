@@ -18,6 +18,9 @@ export interface Sale {
     model: string;
     year: number;
     plate: string;
+    cost_price?: number;
+    price?: number;
+    price_currency?: string | null;
   };
   client?: {
     id: number;
@@ -153,7 +156,7 @@ export async function getSaleById(id: number) {
     .select(
       `
       *,
-      vehicle:vehicles(id, brand, model, year, plate, cost_price, price),
+      vehicle:vehicles(id, brand, model, year, plate, cost_price, price, price_currency),
       client:clients(id, name, cin, phone, email, address)
     `
     )

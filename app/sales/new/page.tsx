@@ -13,7 +13,8 @@ import {
 import { getVehicles, Vehicle } from "@/app/vehicles/actions";
 import { getClients, Client } from "@/app/clientes/actions";
 import { CurrencyInput } from "@/components/ui/currency-input";
-import { formatCurrency } from "@/lib/currency-utils";
+import { formatVehiclePrice } from "@/lib/currency-utils";
+import { vehiclePriceToSaleTotalMinorUnits } from "@/lib/vehicle-currency";
 
 export default function NewSalePage() {
   const router = useRouter();
@@ -73,7 +74,10 @@ export default function NewSalePage() {
       if (selectedVehicle) {
         setFormData((prev) => ({
           ...prev,
-          total_amount: selectedVehicle.price,
+          total_amount: vehiclePriceToSaleTotalMinorUnits(
+            selectedVehicle.price,
+            selectedVehicle.price_currency,
+          ),
         }));
       }
     }
@@ -215,7 +219,8 @@ export default function NewSalePage() {
                 <option value="">Seleccione un vehículo</option>
                 {vehicles.map((vehicle) => (
                   <option key={vehicle.id} value={vehicle.id}>
-                    {vehicle.brand} {vehicle.model} {vehicle.year} - {vehicle.plate} - ${formatCurrency(vehicle.price)}
+                    {vehicle.brand} {vehicle.model} {vehicle.year} - {vehicle.plate} -{" "}
+                    {formatVehiclePrice(vehicle.price, vehicle.price_currency)}
                   </option>
                 ))}
               </select>

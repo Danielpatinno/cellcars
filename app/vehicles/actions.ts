@@ -11,6 +11,8 @@ export interface Vehicle {
   mileage: number;
   cost_price: number;
   price: number;
+  /** PYG = guaraníes, USD = dólares (misma escala interna: centésimos). */
+  price_currency?: string | null;
   plate: string;
   color: string | null;
   status: string | null;
@@ -32,6 +34,7 @@ export async function createVehicle(data: {
   mileage: number;
   cost_price: number;
   price: number;
+  price_currency: string;
   plate: string;
   color?: string;
   status?: string;
@@ -51,6 +54,7 @@ export async function createVehicle(data: {
       mileage: data.mileage,
       cost_price: data.cost_price,
       price: data.price,
+      price_currency: data.price_currency === "USD" ? "USD" : "PYG",
       plate: data.plate.toUpperCase(),
       color: data.color || null,
       status: data.status || null,
@@ -251,6 +255,7 @@ export async function updateVehicle(
     mileage: number;
     cost_price: number;
     price: number;
+    price_currency?: string;
     plate: string;
     color?: string;
     status?: string;
@@ -270,6 +275,9 @@ export async function updateVehicle(
       mileage: data.mileage,
       cost_price: data.cost_price,
       price: data.price,
+      ...(data.price_currency !== undefined
+        ? { price_currency: data.price_currency === "USD" ? "USD" : "PYG" }
+        : {}),
       plate: data.plate.toUpperCase(),
       color: data.color || null,
       status: data.status || null,

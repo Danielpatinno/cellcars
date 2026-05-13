@@ -9,6 +9,11 @@ import { CurrencyInput } from "@/components/ui/currency-input";
 import { toast } from "sonner";
 import { compressImages } from "@/lib/image-compression";
 import { formatThousands, parseThousands } from "@/lib/number-utils";
+import { parseVehicleYearInput } from "@/lib/year-input";
+import {
+  VEHICLE_PRICE_CURRENCY_LABELS,
+  type VehiclePriceCurrency,
+} from "@/lib/vehicle-currency";
 
 export default function NewVehiclePage() {
   const router = useRouter();
@@ -20,6 +25,7 @@ export default function NewVehiclePage() {
     color: "",
     cost_price: 0,
     price: 0,
+    price_currency: "PYG" as VehiclePriceCurrency,
     plate: "",
     mileage: 0,
     status: "disponible",
@@ -94,6 +100,7 @@ export default function NewVehiclePage() {
         color: formData.color,
         cost_price: formData.cost_price,
         price: formData.price,
+        price_currency: formData.price_currency,
         plate: formData.plate,
         mileage: formData.mileage,
         status: formData.status,
@@ -166,13 +173,19 @@ export default function NewVehiclePage() {
                 Año *
               </label>
               <input
-                type="number"
+                type="text"
+                inputMode="numeric"
+                maxLength={4}
                 required
-                value={formData.year}
-                onChange={(e) => setFormData({ ...formData, year: parseInt(e.target.value) })}
+                value={formData.year > 0 ? String(formData.year) : ""}
+                onChange={(e) =>
+                  setFormData({
+                    ...formData,
+                    year: parseVehicleYearInput(e.target.value),
+                  })
+                }
                 className="w-full rounded-lg border border-zinc-300 bg-white px-4 py-2 text-zinc-900"
-                min="1900"
-                max={new Date().getFullYear() + 1}
+                placeholder={String(new Date().getFullYear())}
               />
             </div>
             <div>
@@ -190,9 +203,34 @@ export default function NewVehiclePage() {
             </div>
             <div>
               <label className="mb-1 block text-sm font-medium text-zinc-500">
+                Moneda de los precios *
+              </label>
+              <select
+                required
+                value={formData.price_currency}
+                onChange={(e) =>
+                  setFormData({
+                    ...formData,
+                    price_currency: e.target.value as VehiclePriceCurrency,
+                  })
+                }
+                className="w-full rounded-lg border border-zinc-300 bg-white px-4 py-2 text-zinc-900"
+              >
+                {(Object.keys(VEHICLE_PRICE_CURRENCY_LABELS) as VehiclePriceCurrency[]).map(
+                  (c) => (
+                    <option key={c} value={c}>
+                      {VEHICLE_PRICE_CURRENCY_LABELS[c]}
+                    </option>
+                  ),
+                )}
+              </select>
+            </div>
+            <div>
+              <label className="mb-1 block text-sm font-medium text-zinc-500">
                 Precio de Costo *
               </label>
               <CurrencyInput
+                vehicleCurrency={formData.price_currency}
                 value={formData.cost_price}
                 onChange={(value) =>
                   setFormData({ ...formData, cost_price: value })
@@ -204,6 +242,7 @@ export default function NewVehiclePage() {
                 Precio de Venta *
               </label>
               <CurrencyInput
+                vehicleCurrency={formData.price_currency}
                 value={formData.price}
                 onChange={(value) =>
                   setFormData({ ...formData, price: value })

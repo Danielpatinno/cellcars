@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Car, Image as ImageIcon, Search, Eye, Edit } from "lucide-react";
 import { type Vehicle } from "./actions";
 import { TableLoading } from "@/components/ui/table-loading";
-import { formatCurrency } from "@/lib/currency-utils";
+import { formatVehiclePrice } from "@/lib/currency-utils";
 import { useVehicles } from "@/hooks/vehicles/useVehicles";
 import VehicleEditDialog from "@/components/vehicles/VehicleEditDialog";
 import type { VehicleWithImages as VehicleApi } from "@/lib/api/vehicles";
@@ -239,10 +239,10 @@ function VeiculosPageContent() {
                         {veiculo.color || "N/A"}
                       </td>
                       <td className="whitespace-nowrap px-6 py-4 font-medium text-zinc-600">
-                        ${formatCurrency(veiculo.cost_price || 0)}
+                        {formatVehiclePrice(veiculo.cost_price || 0, veiculo.price_currency)}
                       </td>
                       <td className="whitespace-nowrap px-6 py-4 font-medium text-zinc-900">
-                        ${formatCurrency(veiculo.price || 0)}
+                        {formatVehiclePrice(veiculo.price || 0, veiculo.price_currency)}
                       </td>
                       <td className="whitespace-nowrap px-6 py-4 text-sm text-blue-600 font-semibold">
                         {profitMargin}%

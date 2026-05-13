@@ -73,6 +73,7 @@ export async function PATCH(
     mileage: number;
     cost_price: number;
     price: number;
+    price_currency: string;
     plate: string;
     color: string | null;
     status: string | null;
@@ -89,6 +90,14 @@ export async function PATCH(
       ...(body.cost_price !== undefined ? { cost_price: body.cost_price } : {}),
       ...(body.price !== undefined ? { price: body.price } : {}),
       ...(body.plate !== undefined ? { plate: body.plate.toUpperCase() } : {}),
+      ...(body.price_currency !== undefined
+        ? {
+            price_currency:
+              body.price_currency === "USD" || body.price_currency === "PYG"
+                ? body.price_currency
+                : "PYG",
+          }
+        : {}),
       ...(body.color !== undefined ? { color: body.color } : {}),
       ...(body.status !== undefined ? { status: body.status } : {}),
     })

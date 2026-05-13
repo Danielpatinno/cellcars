@@ -15,8 +15,13 @@ import {
 } from "@/components/ui/dialog";
 import { CurrencyInput } from "@/components/ui/currency-input";
 import { formatThousands, parseThousands } from "@/lib/number-utils";
+import { parseVehicleYearInput } from "@/lib/year-input";
 import { useUpdateVehicle } from "@/hooks/vehicles/useVehicleMutations";
 import type { VehicleWithImages } from "@/lib/api/vehicles";
+import {
+  VEHICLE_PRICE_CURRENCY_LABELS,
+  type VehiclePriceCurrency,
+} from "@/lib/vehicle-currency";
 
 type FormState = {
   brand: string;
@@ -28,6 +33,7 @@ type FormState = {
   status: string;
   cost_price: number;
   price: number;
+  price_currency: VehiclePriceCurrency;
 };
 
 function toForm(v: VehicleWithImages): FormState {
@@ -41,6 +47,7 @@ function toForm(v: VehicleWithImages): FormState {
     status: (v.status as any) ?? "disponible",
     cost_price: v.cost_price ?? 0,
     price: v.price ?? 0,
+    price_currency: v.price_currency === "USD" ? "USD" : "PYG",
   };
 }
 
@@ -82,6 +89,7 @@ export default function VehicleEditDialog({
           status: form.status,
           cost_price: Number(form.cost_price),
           price: Number(form.price),
+          price_currency: form.price_currency,
         },
       });
       toast.success("Vehículo actualizado");
@@ -132,11 +140,13 @@ export default function VehicleEditDialog({
                 Año *
               </label>
               <Input
-                type="number"
-                value={form?.year ?? 0}
+                type="text"
+                inputMode="numeric"
+                maxLength={4}
+                value={form && form.year > 0 ? String(form.year) : ""}
                 onChange={(e) =>
                   setForm((p) =>
-                    p ? { ...p, year: Number(e.target.value || 0) } : p,
+                    p ? { ...p, year: parseVehicleYearInput(e.target.value) } : p,
                   )
                 }
                 className="bg-white border-zinc-200 text-zinc-900 focus-visible:border-zinc-300"
@@ -180,9 +190,37 @@ export default function VehicleEditDialog({
             </div>
             <div>
               <label className="mb-1 block text-sm font-medium text-zinc-600">
+                Moneda de los precios
+              </label>
+              <select
+                value={form?.price_currency ?? "PYG"}
+                onChange={(e) =>
+                  setForm((p) =>
+                    p
+                      ? {
+                          ...p,
+                          price_currency: e.target.value as VehiclePriceCurrency,
+                        }
+                      : p,
+                  )
+                }
+                className="w-full rounded-md border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              >
+                {(Object.keys(VEHICLE_PRICE_CURRENCY_LABELS) as VehiclePriceCurrency[]).map(
+                  (c) => (
+                    <option key={c} value={c}>
+                      {VEHICLE_PRICE_CURRENCY_LABELS[c]}
+                    </option>
+                  ),
+                )}
+              </select>
+            </div>
+            <div>
+              <label className="mb-1 block text-sm font-medium text-zinc-600">
                 Precio de Costo
               </label>
               <CurrencyInput
+                vehicleCurrency={form?.price_currency}
                 value={form?.cost_price ?? 0}
                 onChange={(value) => setForm((p) => (p ? { ...p, cost_price: value } : p))}
               />
@@ -192,6 +230,7 @@ export default function VehicleEditDialog({
                 Precio de Venta
               </label>
               <CurrencyInput
+                vehicleCurrency={form?.price_currency}
                 value={form?.price ?? 0}
                 onChange={(value) => setForm((p) => (p ? { ...p, price: value } : p))}
               />

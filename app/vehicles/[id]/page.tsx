@@ -23,9 +23,14 @@ import {
 import { CurrencyInput } from "@/components/ui/currency-input";
 import FormattedDate from "@/components/FormattedDate";
 import { compressImages } from "@/lib/image-compression";
-import { formatCurrency } from "@/lib/currency-utils";
+import { formatVehiclePrice } from "@/lib/currency-utils";
+import {
+  VEHICLE_PRICE_CURRENCY_LABELS,
+  type VehiclePriceCurrency,
+} from "@/lib/vehicle-currency";
 import { useWhatsApp } from "@/hooks/useWhatsApp";
 import { formatThousands, parseThousands } from "@/lib/number-utils";
+import { parseVehicleYearInput } from "@/lib/year-input";
 
 interface VehicleWithImages extends Vehicle {
   images?: string[];
@@ -57,6 +62,7 @@ export default function VehicleDetailsPage() {
     color: "",
     cost_price: 0,
     price: 0,
+    price_currency: "PYG" as VehiclePriceCurrency,
     plate: "",
     mileage: 0,
     status: "disponible",
@@ -93,6 +99,8 @@ export default function VehicleDetailsPage() {
           color: data.color || "",
           cost_price: data.cost_price,
           price: data.price,
+          price_currency:
+            data.price_currency === "USD" ? "USD" : "PYG",
           plate: data.plate,
           mileage: data.mileage,
           status: data.status || "disponible",
@@ -164,6 +172,7 @@ export default function VehicleDetailsPage() {
         color: formData.color,
         cost_price: formData.cost_price,
         price: formData.price,
+        price_currency: formData.price_currency,
         plate: formData.plate,
         mileage: formData.mileage,
         status: formData.status,
@@ -512,11 +521,16 @@ export default function VehicleDetailsPage() {
                     Año *
                   </label>
                   <Input
-                    type="number"
+                    type="text"
+                    inputMode="numeric"
+                    maxLength={4}
                     required
-                    value={formData.year}
+                    value={formData.year > 0 ? String(formData.year) : ""}
                     onChange={(e) =>
-                      setFormData({ ...formData, year: parseInt(e.target.value) })
+                      setFormData({
+                        ...formData,
+                        year: parseVehicleYearInput(e.target.value),
+                      })
                     }
                   />
                 </div>
@@ -533,9 +547,34 @@ export default function VehicleDetailsPage() {
                 </div>
                 <div>
                   <label className="mb-1 block text-sm font-medium text-zinc-500">
+                    Moneda de los precios *
+                  </label>
+                  <select
+                    required
+                    value={formData.price_currency}
+                    onChange={(e) =>
+                      setFormData({
+                        ...formData,
+                        price_currency: e.target.value as VehiclePriceCurrency,
+                      })
+                    }
+                    className="w-full px-3 py-2 border border-zinc-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  >
+                    {(Object.keys(VEHICLE_PRICE_CURRENCY_LABELS) as VehiclePriceCurrency[]).map(
+                      (c) => (
+                        <option key={c} value={c}>
+                          {VEHICLE_PRICE_CURRENCY_LABELS[c]}
+                        </option>
+                      ),
+                    )}
+                  </select>
+                </div>
+                <div>
+                  <label className="mb-1 block text-sm font-medium text-zinc-500">
                     Precio de Costo *
                   </label>
                   <CurrencyInput
+                    vehicleCurrency={formData.price_currency}
                     value={formData.cost_price}
                     onChange={(value) =>
                       setFormData({ ...formData, cost_price: value })
@@ -547,6 +586,7 @@ export default function VehicleDetailsPage() {
                     Precio de Venta *
                   </label>
                   <CurrencyInput
+                    vehicleCurrency={formData.price_currency}
                     value={formData.price}
                     onChange={(value) =>
                       setFormData({ ...formData, price: value })
@@ -667,13 +707,13 @@ export default function VehicleDetailsPage() {
               <div>
                 <label className="text-sm font-medium text-zinc-500">Precio de Costo</label>
                 <p className="mt-1 text-lg text-zinc-900 font-semibold">
-                  ${formatCurrency(vehicle.cost_price || 0)}
+                  {formatVehiclePrice(vehicle.cost_price || 0, vehicle.price_currency)}
                 </p>
               </div>
               <div>
                 <label className="text-sm font-medium text-zinc-500">Precio de Venta</label>
                 <p className="mt-1 text-lg text-zinc-900 font-semibold">
-                  ${formatCurrency(vehicle.price || 0)}
+                  {formatVehiclePrice(vehicle.price || 0, vehicle.price_currency)}
                 </p>
               </div>
               {vehicle.cost_price > 0 && (

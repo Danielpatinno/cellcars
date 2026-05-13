@@ -18,7 +18,7 @@ export async function GET(
     .select(
       `
       *,
-      vehicle:vehicles(id, brand, model, year, plate, cost_price, price),
+      vehicle:vehicles(id, brand, model, year, plate, cost_price, price, price_currency),
       client:clients(id, name, cin, phone, email, address)
     `,
     )

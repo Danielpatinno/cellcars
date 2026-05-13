@@ -96,6 +96,8 @@ export default function VehicleUploadPage() {
         color: vehicleData.color || "",
         cost_price: vehicleData.cost_price,
         price: vehicleData.price,
+        price_currency:
+          vehicleData.price_currency === "USD" ? "USD" : "PYG",
         plate: vehicleData.plate,
         mileage: vehicleData.mileage,
         status: vehicleData.status || "disponible",
